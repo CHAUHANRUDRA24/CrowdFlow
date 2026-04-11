@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+
+  --color-surface: #0f131c;
+  --color-surface-container-lowest: #0a0e17;
+  --color-surface-container-low: #181b25;
+  --color-surface-container: #1c1f29;
+  --color-surface-container-high: #262a34;
+  --color-surface-container-highest: #31353f;
+  
+  --color-primary: #dbfcff;
+  --color-primary-container: #00f0ff;
+  --color-on-primary-container: #006970;
+  
+  --color-secondary: #d7ffc5;
+  --color-secondary-fixed: #79ff5b;
+  --color-secondary-fixed-dim: #2ae500;
+  
+  --color-tertiary-fixed-dim: #fbbc00;
+  
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  
+  --color-outline-variant: #3b494b;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: #dfe2ef;
+  font-family: var(--font-sans);
+}
+
+.glass-panel {
+  background: rgba(49, 53, 63, 0.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(10deg); }
+}
