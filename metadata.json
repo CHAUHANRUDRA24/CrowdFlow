@@ -1,5 +1,7 @@
 {
-  "name": "",
-  "description": "",
-  "requestFramePermissions": []
+  "name": "CrowdFlow AI",
+  "description": "AI-powered smart crowd intelligence and monitoring platform.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

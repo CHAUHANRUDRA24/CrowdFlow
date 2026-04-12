@@ -5,20 +5,33 @@ import { Responder, TelemetryData } from '../../types';
 interface EmergencyProps {
   responders: Responder[];
   telemetry: TelemetryData;
+  onDispatchUnit?: (unitId: string, location: string) => void;
+  onBroadcastMessage?: (message: string) => void;
 }
 
-const Emergency = React.memo(function Emergency({ responders, telemetry }: EmergencyProps) {
+const Emergency = React.memo(function Emergency({ 
+  responders, 
+  telemetry,
+  onDispatchUnit,
+  onBroadcastMessage
+}: EmergencyProps) {
   const [expandedIncident, setExpandedIncident] = useState<string | null>(null);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [previewMode, setPreviewMode] = useState<'mobile' | 'signage'>('mobile');
   const [showLayerMenu, setShowLayerMenu] = useState(false);
   const [showNewAlert, setShowNewAlert] = useState(false);
   const [activeMapTooltip, setActiveMapTooltip] = useState<string | null>(null);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [mapLayers, setMapLayers] = useState({
     density: true,
     staff: true,
     exits: false
   });
+
+  const toggleSelection = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setSelectedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
 
   const [targetSectors, setTargetSectors] = useState<string[]>(['ALL SECTORS']);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
@@ -156,13 +169,6 @@ const Emergency = React.memo(function Emergency({ responders, telemetry }: Emerg
             <h3 className="font-label text-xs font-bold uppercase tracking-widest text-slate-500 mb-6 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 Active Incidents
-                <button 
-                  onClick={triggerNewAlert} 
-                  className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors" 
-                  title="Simulate Incoming Alert"
-                >
-                  <BellRing size={14} />
-                </button>
               </div>
               <span className="px-2 py-0.5 bg-error/20 text-error rounded text-[10px]">Priority Alpha</span>
             </h3>
@@ -528,13 +534,14 @@ const Emergency = React.memo(function Emergency({ responders, telemetry }: Emerg
                   {/* Gate C Hotspot */}
                   <div className="absolute top-1/3 left-1/4 w-32 h-32 rounded-full bg-error/20 blur-2xl animate-pulse"></div>
                   <div 
-                    className="absolute top-1/3 left-1/4 -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto z-20"
+                    className={`absolute top-1/3 left-1/4 -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto z-20 transition-all ${selectedItems.includes('gate-c') ? 'scale-125' : ''}`}
                     onMouseEnter={() => setActiveMapTooltip('gate-c')}
                     onMouseLeave={() => setActiveMapTooltip(null)}
+                    onClick={(e) => toggleSelection(e, 'gate-c')}
                   >
                     <div className="relative flex items-center justify-center">
                       <div className="absolute inset-0 bg-error rounded-full animate-ping opacity-75"></div>
-                      <div className="relative bg-error w-4 h-4 rounded-full border-2 border-white"></div>
+                      <div className={`relative bg-error w-4 h-4 rounded-full border-2 ${selectedItems.includes('gate-c') ? 'border-primary-container shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'border-white'} transition-colors`}></div>
                     </div>
                     <div className="mt-2 bg-surface-container-low/80 backdrop-blur-md p-2 rounded-lg border border-error/50 whitespace-nowrap">
                       <p className="text-[10px] font-black text-error uppercase">Gate C Overcrowd</p>
@@ -586,10 +593,10 @@ const Emergency = React.memo(function Emergency({ responders, telemetry }: Emerg
                     return (
                       <div 
                         key={unit.id}
-                        className="absolute flex flex-col items-center cursor-pointer pointer-events-auto z-20 transition-all duration-1000 ease-linear"
+                        className={`absolute flex flex-col items-center cursor-pointer pointer-events-auto z-20 transition-all duration-1000 ease-linear ${selectedItems.includes(unit.id) ? 'scale-125 z-40' : ''}`}
                         style={{ top: `${unit.top}%`, left: `${unit.left}%`, transform: 'translate(-50%, -50%)' }}
                         onClick={(e) => {
-                          e.stopPropagation();
+                          toggleSelection(e, unit.id);
                           setActiveMapTooltip(activeMapTooltip === unit.id ? null : unit.id);
                         }}
                       >
@@ -597,7 +604,7 @@ const Emergency = React.memo(function Emergency({ responders, telemetry }: Emerg
                           {unit.status === 'On Scene' && (
                             <div className={`absolute inset-0 ${colorClass} rounded-full animate-ping opacity-75`}></div>
                           )}
-                          <div className={`relative w-4 h-4 ${colorClass} rounded-full border-2 border-white ${shadowClass} flex items-center justify-center text-surface-container-lowest`}>
+                          <div className={`relative w-4 h-4 ${colorClass} rounded-full border-2 ${selectedItems.includes(unit.id) ? 'border-primary-container' : 'border-white'} ${shadowClass} flex items-center justify-center text-surface-container-lowest transition-colors`}>
                             <Icon size={8} />
                           </div>
                         </div>
@@ -660,6 +667,51 @@ const Emergency = React.memo(function Emergency({ responders, telemetry }: Emerg
               )}
             </div>
             </div>
+
+            {/* Floating Action Bar for Multiple Selection */}
+            {selectedItems.length > 0 && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface-container-highest/90 backdrop-blur-md border border-outline-variant/30 rounded-full px-4 py-2 flex items-center gap-4 shadow-2xl animate-in slide-in-from-bottom-4">
+                <span className="text-xs font-bold text-white bg-white/10 px-3 py-1 rounded-full flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+                  {selectedItems.length} Selected
+                </span>
+                <div className="w-px h-4 bg-white/10"></div>
+                <button 
+                  className="text-[10px] font-bold uppercase tracking-wider text-primary-container hover:text-primary hover:bg-primary-container/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                  onClick={() => {
+                    if (onDispatchUnit) {
+                      selectedItems.forEach(id => {
+                        if (id.startsWith('u-') || id.startsWith('emt-') || id.startsWith('fire-')) {
+                          onDispatchUnit(id, 'Emergency Hotspot');
+                        }
+                      });
+                    }
+                    setSelectedItems([]);
+                  }}
+                >
+                  <Send size={14} /> Dispatch Units
+                </button>
+                <button 
+                  className="text-[10px] font-bold uppercase tracking-wider text-tertiary-fixed-dim hover:text-tertiary-fixed hover:bg-tertiary-fixed-dim/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                  onClick={() => {
+                    if (onBroadcastMessage) {
+                      onBroadcastMessage(`EMERGENCY: Bulk action initiated for ${selectedItems.join(', ')}.`);
+                    }
+                    setSelectedItems([]);
+                  }}
+                >
+                  <Megaphone size={14} /> Broadcast
+                </button>
+                <div className="w-px h-4 bg-white/10"></div>
+                <button 
+                  className="text-slate-400 hover:text-white hover:bg-white/10 p-1.5 rounded-full transition-colors" 
+                  onClick={() => setSelectedItems([])}
+                  aria-label="Clear selection"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="absolute top-6 right-6 z-50 flex flex-col gap-2 items-end">
@@ -1037,21 +1089,6 @@ const Emergency = React.memo(function Emergency({ responders, telemetry }: Emerg
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Staff Comms</span>
               <span className="font-headline text-lg font-bold text-tertiary-fixed-dim">{telemetry.activeComms} Active Groups</span>
             </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 pl-6 border-l border-outline-variant/20">
-          <div className="text-right">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Administrator</p>
-            <p className="text-sm font-bold text-white tracking-tight">Johnathan V. Rourke</p>
-          </div>
-          <div className="relative">
-            <img 
-              className="w-11 h-11 rounded-full border-2 border-primary-container/50 object-cover" 
-              alt="Admin" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaGPEeXrC-sYvH7lCYk7R9z2hyJd0czWEgYoyN2GQU4OKdmnoOybAadsCoydj_Fu3MhMcrtVWSRkvvt22vIxVS6X52mi_mAMFr_53V_frPVOADeVHKkj36li3Y5WWA801xZ6jtSm76LlbjzDZz7HhnyYw7AG2zM5w4qAmE6h0m2WYG88ylvne7_ypq6pcbPQlHwh6G0ddF4hlmvsSCEgtGXSbrYIf3yGemnx4nn12ln1MI-2iNgKh-MEUUiAc59ttQ7cC3PoPlHCfa"
-              referrerPolicy="no-referrer"
-            />
-            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-secondary-fixed border-2 border-surface-container-low rounded-full shadow-[0_0_8px_currentColor]"></span>
           </div>
         </div>
       </div>

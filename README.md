@@ -1,79 +1,60 @@
-# CrowdFlow AI - Venue Command Center
+# 🌊 CrowdFlow: AI-Powered Venue Intelligence
 
-A production-ready full-stack web application designed for Google Cloud Run. This application provides a modern dashboard for venue management, featuring a "Neural Core" AI assistant powered by the Gemini API.
+> **Preventing crowd crushes and optimizing venue safety using real-time telemetry and Gemini-powered decision support.**
 
-## Features
+![CrowdFlow Dashboard](https://images.unsplash.com/photo-1540039155733-d76e6148e18e?q=80&w=2000&auto=format&fit=crop) *(Note: Add a screenshot of your actual dashboard here before submitting!)*
 
-- **Responsive Dashboard:** Real-time telemetry, heatmaps, and staff coordination.
-- **AI Assistant:** Powered by Gemini 2.5 Flash, capable of calling functions to trigger drills, broadcast messages, and dispatch units.
-- **Full-Stack Architecture:** Express backend serving a Vite React frontend.
-- **Cloud Run Ready:** Configured to listen on `0.0.0.0` and use the `PORT` environment variable.
+## 🚨 The Problem
+Managing large crowds at stadiums, transit hubs, and festivals is a high-stakes operational challenge. Traditional security teams rely on fragmented camera feeds and static radios. When a bottleneck forms or an emergency occurs, reaction times are slow, leading to dangerous overcrowding, panic, and inefficient resource deployment.
 
-## Local Development
+## 💡 The Solution
+**CrowdFlow** is a next-generation Command Center dashboard that acts as a central nervous system for large venues. It aggregates live telemetry (crowd density, gate throughput, weather, staff locations) and uses **Google's Gemini API** as an operational "Neural Core." 
 
-1. **Install dependencies:**
+Instead of just chatting with an AI, CrowdFlow's AI ingests the live data stream, allowing venue managers to ask context-aware questions and execute emergency protocols instantly.
+
+## ✨ Key Features
+* **Live Telemetry Engine:** Real-time simulation of venue metrics including gate flow, sector density, and wait times.
+* **Context-Aware AI (Neural Core):** Powered by Gemini. The AI reads the live JSON telemetry stream, allowing it to understand exactly what is happening in the venue at any given second.
+* **Emergency Protocol Execution:** Trigger venue-wide evacuations, dispatch medical units, and broadcast alerts directly through the AI or the dashboard.
+* **High-Fidelity UI:** A dark-mode, sci-fi-inspired interface built for high-stress Security Operations Centers (SOC), featuring smooth animations and data visualizations.
+* **Secure Access:** Role-based authentication powered by Firebase.
+
+## 🛠️ Tech Stack
+* **Frontend:** React 18, TypeScript, Vite
+* **Styling:** Tailwind CSS, Framer Motion (for fluid UI transitions), Lucide Icons
+* **Backend / AI:** Node.js/Express (API routing), `@google/genai` (Gemini API)
+* **Auth:** Firebase Authentication
+* **Architecture:** Custom React Hooks (`useTelemetry`) for modular state management and data streaming.
+
+## 🧠 How the AI Works (The "Wow" Factor)
+CrowdFlow doesn't just use AI for text generation. Every 2.5 seconds, the `useTelemetry` hook updates the venue's state. When a user opens the AI Assistant, the **entire live telemetry JSON object** is injected into Gemini's system prompt. 
+
+This means you can ask the AI: *"Which gate is currently the most crowded?"* or *"Dispatch a medical unit to the sector with the highest temperature,"* and Gemini will analyze the live data and execute the function call.
+
+## 🚀 Running Locally
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/crowdflow.git
+   ```
+2. Install dependencies:
    ```bash
    npm install
    ```
-
-2. **Set up environment variables:**
-   Copy `.env.example` to `.env` and add your Gemini API key:
-   ```bash
-   cp .env.example .env
+3. Set up your environment variables (create a `.env` file):
+   ```env
+   GEMINI_API_KEY=your_google_gemini_key
+   # Add your Firebase config variables here
    ```
-   Edit `.env` and set `GEMINI_API_KEY=your_actual_api_key`.
-
-3. **Start the development server:**
+4. Start the development server:
    ```bash
    npm run dev
    ```
-   The app will be available at `http://localhost:3000`.
 
-## Deployment to Google Cloud Run
+## 🔮 Future Roadmap
+* **IoT Integration:** Replace the simulated telemetry hook with real WebSockets connected to physical turnstiles and LiDAR crowd sensors.
+* **Google Maps Integration:** Overlay live crowd heatmaps onto real-world satellite imagery using the Maps JavaScript API.
+* **Predictive Analytics:** Use Vertex AI to predict crowd crushes 15 minutes before they happen based on historical flow data.
 
-This application is designed to be easily deployed to Google Cloud Run.
-
-### Prerequisites
-
-- [Google Cloud SDK (gcloud)](https://cloud.google.com/sdk/docs/install) installed and configured.
-- A Google Cloud project with billing enabled.
-- Cloud Run API enabled.
-
-### Deployment Steps
-
-1. **Authenticate with Google Cloud:**
-   ```bash
-   gcloud auth login
-   ```
-
-2. **Set your Google Cloud project:**
-   ```bash
-   gcloud config set project YOUR_PROJECT_ID
-   ```
-
-3. **Deploy to Cloud Run:**
-   Run the following command from the root of the project. Cloud Run will automatically build the container using the provided `Dockerfile` and deploy it.
-   ```bash
-   gcloud run deploy crowdflow-ai --source . --region us-central1 --allow-unauthenticated
-   ```
-
-4. **Set the Gemini API Key in Cloud Run:**
-   After deployment, you need to provide the Gemini API key to the service. You can do this via the Cloud Console UI or using the CLI:
-   ```bash
-   gcloud run services update crowdflow-ai --region us-central1 --update-env-vars GEMINI_API_KEY=your_actual_api_key
-   ```
-
-### Common Deployment Errors and Fixes
-
-- **`Container failed to start. Failed to listen on PORT.`**
-  *Fix:* Ensure the Express server is listening on `0.0.0.0` and using `process.env.PORT`. This is already configured in `server.ts`.
-- **`Missing GEMINI_API_KEY` or AI assistant failing to respond.**
-  *Fix:* The environment variable `GEMINI_API_KEY` must be set in the Cloud Run service configuration (Step 4 above). Do not hardcode the key in your source code.
-- **Build fails during `npm run build`.**
-  *Fix:* Ensure all TypeScript types are correct. You can test the build locally by running `npm run build` before deploying.
-
-## Architecture
-
-- **Frontend:** React 19, Vite, Tailwind CSS, Lucide Icons, Framer Motion.
-- **Backend:** Express.js, `@google/genai` SDK.
-- **Integration:** The frontend communicates with the backend via the `/api/chat` endpoint, keeping the Gemini API key secure on the server.
+---
+*Built with ❤️ for the Hackathon.*

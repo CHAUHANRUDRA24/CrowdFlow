@@ -19,7 +19,8 @@ import {
   Bot,
   X,
   HeartPulse,
-  Shield
+  Shield,
+  LogOut
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import AIAssistant from './components/AIAssistant';
@@ -28,212 +29,36 @@ import Analytics from './components/tabs/Analytics';
 import Staffing from './components/tabs/Staffing';
 import Heatmaps from './components/tabs/Heatmaps';
 import Emergency from './components/tabs/Emergency';
+import Login from './components/Login';
 import { Responder, TelemetryData } from './types';
+import { auth } from './firebase';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { useTelemetry } from './hooks/useTelemetry';
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [activeTab, setActiveTab] = useState('Dashboard');
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [showRosterModal, setShowRosterModal] = useState(false);
-  const [globalAlert, setGlobalAlert] = useState<{title: string, message: string} | null>(null);
   const [bellShaking, setBellShaking] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
-  const [activeScenario, setActiveScenario] = useState<'none' | 'evacuation'>('none');
-  const activeScenarioRef = useRef<'none' | 'evacuation'>('none');
 
-  const triggerScenario = useCallback((scenario: 'none' | 'evacuation') => {
-    if (activeScenario === scenario) {
-      setActiveScenario('none');
-      activeScenarioRef.current = 'none';
-      setGlobalAlert(null);
-      return;
-    }
-    setActiveScenario(scenario);
-    activeScenarioRef.current = scenario;
-    if (scenario === 'evacuation') {
-      setGlobalAlert({
-        title: "MANDATORY EVACUATION",
-        message: "Severe weather protocol initiated. All gates set to egress. Directing crowds to nearest exits."
-      });
-      setBellShaking(true);
-      setTimeout(() => setBellShaking(false), 5000);
-    }
-  }, [activeScenario]);
-
-  const dispatchUnit = useCallback((unitId: string, location: string) => {
-    setResponders(prev => prev.map(unit => {
-      if (unit.id === unitId) {
-        return { ...unit, status: 'En Route', eta: '2m 00s' }; // Simplified dispatch
-      }
-      return unit;
-    }));
-  }, []);
+  const { telemetry, responders, triggerScenario, dispatchUnit } = useTelemetry();
 
   const broadcastMessage = useCallback((message: string) => {
-    setGlobalAlert({
-      title: "AI BROADCAST",
-      message: message
-    });
+    console.log("Broadcast message:", message);
     setBellShaking(true);
     setTimeout(() => setBellShaking(false), 5000);
-  }, []);
-
-  const [responders, setResponders] = useState<Responder[]>([
-    { id: 'u-7', name: 'Unit 7', type: 'security', top: 40, left: 35, status: 'En Route', eta: '1m 30s' },
-    { id: 'u-9', name: 'Unit 9', type: 'security', top: 45, left: 30, status: 'Patrol', eta: '' },
-    { id: 'u-12', name: 'Unit 12', type: 'security', top: 20, left: 60, status: 'Stationary', eta: '' },
-    { id: 'emt-4', name: 'EMT Unit 4', type: 'medical', top: 60, left: 50, status: 'On Scene', eta: '' },
-    { id: 'fire-alpha', name: 'Fire Team Alpha', type: 'fire', top: 35, left: 60, status: 'En Route', eta: '45s' },
-  ]);
-
-  const [telemetry, setTelemetry] = useState<TelemetryData>({
-    weather: { temp: 22.4, wind: 14.2, precip: 65, condition: 'Light Rain' },
-    attendance: 42892,
-    gateThroughput: 840,
-    avgWaitTime: 4.2,
-    waits: { ca: 18, cb: 8, rn: 2, rs: 12 },
-    activeFlow: 94,
-    fireTemp: 450,
-    crowdDensity: 92,
-    patientHeartRate: 115,
-    units: {
-      'u-7': { hr: 85, fat: 88 },
-      'u-9': { hr: 72, fat: 45 },
-      'u-12': { hr: 68, fat: 20 },
-      'emt-4': { hr: 110, fat: 60 },
-      'fire-alpha': { hr: 135, fat: 75 }
-    },
-    peakCapacity: 94,
-    dwellTime: 3.2,
-    growth: 12,
-    gateFlows: [
-      { gate: 'Gate A (North)', flow: 85, color: 'bg-primary-container' },
-      { gate: 'Gate B (East)', flow: 95, color: 'bg-error' },
-      { gate: 'Gate C (South)', flow: 45, color: 'bg-secondary-fixed' },
-      { gate: 'Gate D (West)', flow: 60, color: 'bg-tertiary-fixed-dim' },
-    ],
-    flowData: [
-      { value: 30 }, { value: 45 }, { value: 25 }, { value: 80 }, { value: 50 }, { value: 35 },
-    ],
-    sectorDist: 75,
-    latency: 12,
-    onlineFeeds: 142,
-    activeComms: 8,
-    activeIncidents: 3,
-    criticalAlerts: 1,
-    unitsDeployed: 42,
-    velocity: 0.5,
-    activeAlerts: [
-      { id: 'a1', title: 'Overcrowding Event', description: 'Gate C capacity exceeded by 24%.', time: '02:45m Ago', severity: 'critical' },
-      { id: 'a2', title: 'Medical Emergency', description: 'Sector 102 - Row J. Fainting reported.', time: '08:12m Ago', severity: 'warning' }
-    ]
-  });
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Update responders
-      setResponders(prev => prev.map(unit => {
-        let moveTop = 0;
-        let moveLeft = 0;
-        let newStatus = unit.status;
-        
-        if (unit.status === 'En Route') {
-           let targetTop = unit.top;
-           let targetLeft = unit.left;
-           if (unit.id === 'u-7') { targetTop = 33.33; targetLeft = 25; }
-           else if (unit.id === 'fire-alpha') { targetTop = 20; targetLeft = 70; }
-           else if (unit.id === 'u-9') { targetTop = 33.33; targetLeft = 25; }
-           
-           const distTop = targetTop - unit.top;
-           const distLeft = targetLeft - unit.left;
-           const distance = Math.sqrt(distTop*distTop + distLeft*distLeft);
-           
-           if (distance < 2) {
-             newStatus = 'On Scene';
-             unit.eta = '';
-           } else {
-             moveTop = (distTop / distance) * 1.5;
-             moveLeft = (distLeft / distance) * 1.5;
-           }
-        } else if (unit.status === 'Patrol') {
-           moveTop = (Math.random() - 0.5) * 2;
-           moveLeft = (Math.random() - 0.5) * 2;
-        } else {
-           moveTop = (Math.random() - 0.5) * 0.2;
-           moveLeft = (Math.random() - 0.5) * 0.2;
-        }
-        
-        return {
-          ...unit,
-          status: newStatus,
-          top: Math.max(10, Math.min(90, unit.top + moveTop)),
-          left: Math.max(10, Math.min(90, unit.left + moveLeft)),
-        };
-      }));
-
-      // Update telemetry
-      setTelemetry(prev => {
-        const precipSpike = Math.random() > 0.9 ? Math.random() * 30 : 0;
-        const windSpike = Math.random() > 0.9 ? Math.random() * 15 : 0;
-        const newPrecip = Math.min(100, Math.max(0, prev.weather.precip + Math.floor(Math.random() * 5 - 2) + precipSpike));
-        const newWind = Number((Math.max(0, prev.weather.wind + (Math.random() * 2 - 1) + windSpike)).toFixed(1));
-        
-        const nextUnits = { ...prev.units };
-        Object.keys(nextUnits).forEach(key => {
-          nextUnits[key] = {
-            hr: Math.max(60, Math.min(160, nextUnits[key].hr + Math.floor(Math.random() * 7 - 3))),
-            fat: Math.min(100, Math.max(0, nextUnits[key].fat + (Math.random() * 0.5 - 0.1)))
-          };
-        });
-
-        return {
-          ...prev,
-          weather: {
-            temp: activeScenarioRef.current === 'evacuation' ? Number((prev.weather.temp - 0.5).toFixed(1)) : Number((prev.weather.temp + (Math.random() * 0.4 - 0.2)).toFixed(1)),
-            wind: activeScenarioRef.current === 'evacuation' ? Math.min(80, prev.weather.wind + 5) : newWind,
-            precip: activeScenarioRef.current === 'evacuation' ? Math.min(100, prev.weather.precip + 10) : newPrecip,
-            condition: activeScenarioRef.current === 'evacuation' ? 'Severe Storm' : (newPrecip > 80 ? 'Heavy Rain' : newPrecip > 40 ? 'Light Rain' : newPrecip > 15 ? 'Cloudy' : 'Clear')
-          },
-          attendance: activeScenarioRef.current === 'evacuation' ? Math.max(0, prev.attendance - Math.floor(Math.random() * 500 + 200)) : prev.attendance + Math.floor(Math.random() * 5),
-          gateThroughput: activeScenarioRef.current === 'evacuation' ? Math.min(1200, prev.gateThroughput + Math.floor(Math.random() * 100 + 50)) : Math.floor(prev.gateThroughput + (Math.random() * 40 - 20)),
-          avgWaitTime: Number((prev.avgWaitTime + (Math.random() * 0.4 - 0.2)).toFixed(1)),
-          waits: {
-            ca: Math.max(0, prev.waits.ca + Math.floor(Math.random() * 3 - 1)),
-            cb: Math.max(0, prev.waits.cb + Math.floor(Math.random() * 3 - 1)),
-            rn: Math.max(0, prev.waits.rn + Math.floor(Math.random() * 3 - 1)),
-            rs: Math.max(0, prev.waits.rs + Math.floor(Math.random() * 3 - 1)),
-          },
-          activeFlow: Math.min(100, Math.max(0, prev.activeFlow + Math.floor(Math.random() * 3 - 1))),
-          fireTemp: Math.max(20, prev.fireTemp + Math.floor(Math.random() * 20 - 10)),
-          crowdDensity: activeScenarioRef.current === 'evacuation' ? Math.min(100, prev.crowdDensity + Math.floor(Math.random() * 5)) : Math.min(100, Math.max(0, prev.crowdDensity + Math.floor(Math.random() * 5 - 2))),
-          patientHeartRate: Math.max(40, Math.min(180, prev.patientHeartRate + Math.floor(Math.random() * 10 - 5))),
-          units: nextUnits,
-          peakCapacity: Math.min(100, Math.max(80, prev.peakCapacity + Math.floor(Math.random() * 3 - 1))),
-          dwellTime: Number((prev.dwellTime + (Math.random() * 0.2 - 0.1)).toFixed(1)),
-          growth: Math.max(0, prev.growth + Math.floor(Math.random() * 3 - 1)),
-          gateFlows: prev.gateFlows.map(gate => ({
-            ...gate,
-            flow: activeScenarioRef.current === 'evacuation' ? Math.min(100, gate.flow + Math.floor(Math.random() * 15 + 5)) : Math.min(100, Math.max(20, gate.flow + Math.floor(Math.random() * 5 - 2))),
-            color: activeScenarioRef.current === 'evacuation' ? 'bg-error' : (gate.flow > 80 ? 'bg-error' : gate.flow > 50 ? 'bg-secondary-fixed' : 'bg-primary-container')
-          })),
-          flowData: [...prev.flowData.slice(1), { value: activeScenarioRef.current === 'evacuation' ? Math.floor(Math.random() * 40) + 60 : Math.floor(Math.random() * 60) + 20 }],
-          sectorDist: activeScenarioRef.current === 'evacuation' ? Math.max(0, prev.sectorDist - 2) : Math.min(100, Math.max(0, prev.sectorDist + Math.floor(Math.random() * 3 - 1))),
-          latency: activeScenarioRef.current === 'evacuation' ? Math.min(150, prev.latency + Math.floor(Math.random() * 10)) : Math.max(8, prev.latency + Math.floor(Math.random() * 9 - 4)),
-          onlineFeeds: Math.min(150, Math.max(135, prev.onlineFeeds + Math.floor(Math.random() * 3 - 1))),
-          activeComms: activeScenarioRef.current === 'evacuation' ? Math.min(25, prev.activeComms + 2) : Math.max(5, prev.activeComms + Math.floor(Math.random() * 3 - 1)),
-          activeIncidents: activeScenarioRef.current === 'evacuation' ? Math.min(15, prev.activeIncidents + (Math.random() > 0.7 ? 1 : 0)) : (Math.random() > 0.8 ? Math.max(1, prev.activeIncidents + (Math.random() > 0.5 ? 1 : -1)) : prev.activeIncidents),
-          criticalAlerts: activeScenarioRef.current === 'evacuation' ? Math.min(5, prev.criticalAlerts + (Math.random() > 0.8 ? 1 : 0)) : (Math.random() > 0.9 ? Math.max(0, prev.criticalAlerts + (Math.random() > 0.5 ? 1 : -1)) : prev.criticalAlerts),
-          unitsDeployed: activeScenarioRef.current === 'evacuation' ? Math.min(60, prev.unitsDeployed + 1) : (Math.random() > 0.7 ? Math.max(30, prev.unitsDeployed + (Math.random() > 0.5 ? 1 : -1)) : prev.unitsDeployed),
-          velocity: Number((Math.max(0.1, prev.velocity + (activeScenarioRef.current === 'evacuation' ? 0.1 : (Math.random() * 0.2 - 0.1)))).toFixed(2)),
-          activeAlerts: activeScenarioRef.current === 'evacuation' ? [
-            { id: 'e1', title: 'MANDATORY EVACUATION', description: 'Severe weather protocol initiated. All gates set to egress.', time: 'Just Now', severity: 'critical' },
-            { id: 'e2', title: 'Gate C Overcrowd', description: 'Mass exodus causing bottleneck.', time: '1m Ago', severity: 'critical' },
-            ...prev.activeAlerts.slice(0, 2)
-          ] : prev.activeAlerts
-        };
-      });
-    }, 2500);
-    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -247,79 +72,61 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    // Simulate an incoming alert after 3 seconds for demonstration
-    const timer = setTimeout(() => {
-      setGlobalAlert({
-        title: "CRITICAL ALERT",
-        message: "Unauthorized access detected in Sector 7. Security dispatched."
-      });
-      setBellShaking(true);
-      
-      // Stop shaking after 5 seconds
-      setTimeout(() => setBellShaking(false), 5000);
-    }, 3000);
-    
-    return () => clearTimeout(timer);
+  const handleOpenRoster = useCallback(() => {
+    setShowRosterModal(true);
   }, []);
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'Dashboard': return <CommandCenter responders={responders} telemetry={telemetry} onOpenRoster={() => setShowRosterModal(true)} />;
+      case 'Dashboard': 
+        return <CommandCenter 
+          responders={responders} 
+          telemetry={telemetry} 
+          onOpenRoster={handleOpenRoster}
+          onDispatchUnit={dispatchUnit}
+          onBroadcastMessage={broadcastMessage}
+        />;
       case 'Analytics': return <Analytics telemetry={telemetry} />;
-      case 'Staffing': return <Staffing responders={responders} telemetry={telemetry} />;
+      case 'Staffing': 
+        return <Staffing 
+          responders={responders} 
+          telemetry={telemetry} 
+          onDispatchUnit={dispatchUnit}
+          onBroadcastMessage={broadcastMessage}
+        />;
       case 'Heatmaps': return <Heatmaps responders={responders} telemetry={telemetry} />;
-      case 'Emergency': return <Emergency responders={responders} telemetry={telemetry} />;
-      default: return <CommandCenter responders={responders} telemetry={telemetry} />;
+      case 'Emergency': 
+        return <Emergency 
+          responders={responders} 
+          telemetry={telemetry} 
+          onDispatchUnit={dispatchUnit}
+          onBroadcastMessage={broadcastMessage}
+        />;
+      default: 
+        return <CommandCenter 
+          responders={responders} 
+          telemetry={telemetry} 
+          onOpenRoster={handleOpenRoster}
+          onDispatchUnit={dispatchUnit}
+          onBroadcastMessage={broadcastMessage}
+        />;
     }
   };
 
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-primary-container border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login onLoginSuccess={() => {}} />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-surface text-slate-200 relative">
-      {/* Global Toast Notification */}
-      <AnimatePresence>
-        {globalAlert && (
-          <motion.div
-            initial={{ opacity: 0, y: -50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -50, scale: 0.9 }}
-            role="alert"
-            aria-live="assertive"
-            className="absolute top-6 right-6 z-[100] w-96 bg-surface-container-highest border-l-4 border-error rounded-xl shadow-[0_10px_40px_rgba(239,68,68,0.2)] overflow-hidden"
-          >
-            <div className="p-4 flex items-start gap-3">
-              <div className="bg-error/20 p-2 rounded-lg text-error mt-1">
-                <AlertTriangle size={20} />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <h4 className="text-error font-bold text-sm uppercase tracking-wider">{globalAlert.title}</h4>
-                  <button 
-                    onClick={() => setGlobalAlert(null)}
-                    aria-label="Close global alert"
-                    className="text-slate-400 hover:text-white transition-colors"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <p className="text-slate-300 text-sm mt-1 leading-relaxed">{globalAlert.message}</p>
-                <div className="mt-3 flex gap-2">
-                  <button 
-                    onClick={() => {
-                      setActiveTab('Emergency');
-                      setGlobalAlert(null);
-                    }}
-                    className="px-3 py-1.5 bg-error/20 text-error text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-error/30 transition-colors"
-                  >
-                    View Incident
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Sidebar */}
       <aside className="w-64 flex-shrink-0 bg-surface-container-low flex flex-col py-8 z-50 border-r border-outline-variant/20">
         <div className="px-6 mb-10">
@@ -358,13 +165,13 @@ export default function App() {
           })}
         </nav>
 
-        <div className="px-4 mt-auto mb-8">
+        <div className="px-4 mt-auto mb-8 space-y-4">
           <button 
-            onClick={() => setShowRosterModal(true)}
-            className="w-full py-4 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold rounded-xl active:scale-95 transition-all uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:shadow-[0_0_20px_rgba(0,240,255,0.3)]"
+            onClick={() => signOut(auth)}
+            className="w-full py-3 bg-surface-container-high text-slate-400 hover:text-white font-bold rounded-xl active:scale-95 transition-all uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 border border-white/5 hover:border-white/10"
           >
-            <Shield size={16} className="fill-current" />
-            View Roster
+            <LogOut size={14} />
+            Sign Out
           </button>
         </div>
       </aside>
@@ -479,16 +286,19 @@ export default function App() {
             
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold font-headline text-white leading-none">COMMANDER.SYS</p>
+                <p className="text-xs font-bold font-headline text-white leading-none uppercase">
+                  {user.displayName || 'COMMANDER.SYS'}
+                </p>
                 <p className="text-[10px] text-secondary-fixed uppercase tracking-widest mt-1">Authorized</p>
               </div>
-              <div className="w-10 h-10 rounded-xl border-2 border-primary-container p-0.5">
+              <div className="relative w-10 h-10 rounded-xl border-2 border-primary-container p-0.5">
                 <img 
                   alt="User Profile" 
                   className="w-full h-full rounded-lg object-cover" 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmiy62EXePiaczdccCE3I-CVLNXCFqcpaFgrJkgmZQPvUtVBPT8asI05cUwrY1TdmlqLYfbaKy4nyF15fNgLHxGDtSJGIpOZ6VMv1zkCFN1WmFwLsUHngNVJ1ewTJcJk3vMCPxJ_-w78z9afM5to8kSacs5APP_vxaKXDUGtbVea2hAGBfFHYeFaeSjbAKCQsWTMC07mGvUCpFl_kCzwVcnn7edEWNZ9n-WvexJyDEoA4NckI_5KhfBfXNIFie1dCf78kv5RygSXDx"
+                  src={user.photoURL || "https://lh3.googleusercontent.com/aida-public/AB6AXuCmiy62EXePiaczdccCE3I-CVLNXCFqcpaFgrJkgmZQPvUtVBPT8asI05cUwrY1TdmlqLYfbaKy4nyF15fNgLHxGDtSJGIpOZ6VMv1zkCFN1WmFwLsUHngNVJ1ewTJcJk3vMCPxJ_-w78z9afM5to8kSacs5APP_vxaKXDUGtbVea2hAGBfFHYeFaeSjbAKCQsWTMC07mGvUCpFl_kCzwVcnn7edEWNZ9n-WvexJyDEoA4NckI_5KhfBfXNIFie1dCf78kv5RygSXDx"}
                   referrerPolicy="no-referrer"
                 />
+                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-secondary-fixed border-2 border-surface-container rounded-full"></div>
               </div>
             </div>
           </div>

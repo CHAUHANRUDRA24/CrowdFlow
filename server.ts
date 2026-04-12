@@ -3,15 +3,33 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+  // Security Middleware
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disabled for local dev/Vite compatibility
+  }));
+
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+    message: { error: "Too many requests from this IP, please try again after 15 minutes" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
 
   app.use(express.json());
+
+  // Apply rate limiting to API routes
+  app.use("/api/", apiLimiter);
 
   // API routes FIRST
   app.get("/api/health", (req, res) => {
@@ -79,7 +97,7 @@ async function startServer() {
         },
       };
 
-      const response = await ai.models.generateContent({
+      const responseStream = await ai.models.generateContentStream({
         model: "gemini-2.5-flash",
         contents: contents,
         config: {
@@ -98,11 +116,20 @@ async function startServer() {
         },
       });
 
-      res.json({
-        text: response.text,
-        functionCalls: response.functionCalls,
-        candidates: response.candidates,
-      });
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      for await (const chunk of responseStream) {
+        res.write(`data: ${JSON.stringify({
+          text: chunk.text,
+          functionCalls: chunk.functionCalls,
+          candidates: chunk.candidates
+        })}\n\n`);
+      }
+      
+      res.write("data: [DONE]\n\n");
+      res.end();
     } catch (error: any) {
       console.error("Error calling Gemini API:", error);
       res

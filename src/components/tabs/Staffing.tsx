@@ -1,15 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ExternalLink, Brain, Send, HeartPulse, Activity, CheckCircle2, Loader2, Shield, Flame } from 'lucide-react';
+import { ExternalLink, Brain, Send, HeartPulse, Activity, CheckCircle2, Loader2, Shield, Flame, Megaphone, X } from 'lucide-react';
 import { Responder, TelemetryData } from '../../types';
 
 interface StaffingProps {
   responders?: Responder[];
   telemetry: TelemetryData;
+  onDispatchUnit?: (unitId: string, location: string) => void;
+  onBroadcastMessage?: (message: string) => void;
 }
 
-const Staffing = React.memo(function Staffing({ responders = [], telemetry }: StaffingProps) {
+const Staffing = React.memo(function Staffing({ 
+  responders = [], 
+  telemetry,
+  onDispatchUnit,
+  onBroadcastMessage
+}: StaffingProps) {
   const [executeState, setExecuteState] = useState<'idle' | 'executing' | 'completed' | 'dismissed'>('idle');
   const [rotationState, setRotationState] = useState<'idle' | 'scheduling' | 'completed' | 'dismissed'>('idle');
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   
   const [prioritySuggestion, setPrioritySuggestion] = useState('Redeploy 2 units from East Concourse to Gate B Tunnel.');
   const [optimizationSuggestion, setOptimizationSuggestion] = useState('Unit u-7 showing elevated fatigue (88%). Recommend rotation.');
@@ -18,6 +26,11 @@ const Staffing = React.memo(function Staffing({ responders = [], telemetry }: St
   useEffect(() => {
     respondersRef.current = responders;
   }, [responders]);
+
+  const toggleSelection = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setSelectedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -104,14 +117,15 @@ const Staffing = React.memo(function Staffing({ responders = [], telemetry }: St
                 return (
                   <div 
                     key={unit.id}
-                    className="absolute flex flex-col items-center cursor-pointer pointer-events-auto z-30 transition-all duration-1000 ease-linear"
+                    className={`absolute flex flex-col items-center cursor-pointer pointer-events-auto z-30 transition-all duration-1000 ease-linear ${selectedItems.includes(unit.id) ? 'scale-125 z-40' : ''}`}
                     style={{ top: `${unit.top}%`, left: `${unit.left}%`, transform: 'translate(-50%, -50%)' }}
+                    onClick={(e) => toggleSelection(e, unit.id)}
                   >
                     <div className="relative flex items-center justify-center">
                       {unit.status === 'On Scene' && (
                         <div className={`absolute inset-0 ${colorClass} rounded-full animate-ping opacity-75`}></div>
                       )}
-                      <div className={`relative w-4 h-4 ${colorClass} rounded-full border-2 border-white ${shadowClass} flex items-center justify-center text-surface-container-lowest`}>
+                      <div className={`relative w-4 h-4 ${colorClass} rounded-full border-2 ${selectedItems.includes(unit.id) ? 'border-primary-container' : 'border-white'} ${shadowClass} flex items-center justify-center text-surface-container-lowest transition-colors`}>
                         <Icon size={8} />
                       </div>
                     </div>
@@ -128,6 +142,49 @@ const Staffing = React.memo(function Staffing({ responders = [], telemetry }: St
               <h3 className="text-sm font-bold font-headline tracking-tight text-white drop-shadow-md">LIVE_DEPLOYMENT_MAP</h3>
               <p className="text-[10px] text-slate-300 drop-shadow-md uppercase tracking-widest">Real-time unit tracking</p>
             </div>
+
+            {/* Floating Action Bar for Multiple Selection */}
+            {selectedItems.length > 0 && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface-container-highest/90 backdrop-blur-md border border-outline-variant/30 rounded-full px-4 py-2 flex items-center gap-4 shadow-2xl animate-in slide-in-from-bottom-4">
+                <span className="text-xs font-bold text-white bg-white/10 px-3 py-1 rounded-full flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+                  {selectedItems.length} Selected
+                </span>
+                <div className="w-px h-4 bg-white/10"></div>
+                <button 
+                  className="text-[10px] font-bold uppercase tracking-wider text-primary-container hover:text-primary hover:bg-primary-container/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                  onClick={() => {
+                    if (onDispatchUnit) {
+                      selectedItems.forEach(id => {
+                        onDispatchUnit(id, 'Redeployment Zone');
+                      });
+                    }
+                    setSelectedItems([]);
+                  }}
+                >
+                  <Send size={14} /> Dispatch Units
+                </button>
+                <button 
+                  className="text-[10px] font-bold uppercase tracking-wider text-tertiary-fixed-dim hover:text-tertiary-fixed hover:bg-tertiary-fixed-dim/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                  onClick={() => {
+                    if (onBroadcastMessage) {
+                      onBroadcastMessage(`STAFFING: Bulk action initiated for ${selectedItems.join(', ')}.`);
+                    }
+                    setSelectedItems([]);
+                  }}
+                >
+                  <Megaphone size={14} /> Broadcast
+                </button>
+                <div className="w-px h-4 bg-white/10"></div>
+                <button 
+                  className="text-slate-400 hover:text-white hover:bg-white/10 p-1.5 rounded-full transition-colors" 
+                  onClick={() => setSelectedItems([])}
+                  aria-label="Clear selection"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
           </div>
 
           <div>

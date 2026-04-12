@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, X, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Bot, Send, X, Loader2, Mic, MicOff } from 'lucide-react';
 import { Type, FunctionDeclaration, Content } from '@google/genai';
 
 import { TelemetryData } from '../types';
@@ -68,7 +68,14 @@ export default function AIAssistant({ isOpen, onClose, telemetry, onTriggerEvacD
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  const telemetryRef = useRef(telemetry);
+  useEffect(() => {
+    telemetryRef.current = telemetry;
+  }, [telemetry]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -78,26 +85,70 @@ export default function AIAssistant({ isOpen, onClose, telemetry, onTriggerEvacD
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    // Initialize Speech Recognition
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(prev => prev ? `${prev} ${transcript}` : transcript);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          // You might want to show a toast or alert here in a real app
+          console.warn("Microphone access denied. Please allow microphone access in your browser settings.");
+        }
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+    
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleListening = useCallback(() => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current?.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error("Speech recognition failed to start", e);
+      }
+    }
+  }, [isListening]);
+
   const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage = input.trim();
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }, { role: 'model', content: '' }]);
     setIsLoading(true);
 
     try {
-      const systemPrompt = `You are the "CrowdFlow Neural Core", an advanced AI assistant for a Venue Command Center dashboard. 
+      const getSystemPrompt = () => `You are the "CrowdFlow Neural Core", an advanced AI assistant for a Venue Command Center dashboard. 
       You help venue managers handle crowd control, staffing, and emergencies.
-      Current live venue status:
-      - Total Attendance: ${telemetry.attendance.toLocaleString()}
-      - Weather: ${telemetry.weather.condition}, ${telemetry.weather.temp}°C, Wind: ${telemetry.weather.wind}km/h
-      - Active Incidents: ${telemetry.activeIncidents}
-      - Critical Alerts: ${telemetry.criticalAlerts}
-      - Gate Throughput: ${telemetry.gateThroughput}/min
-      - Active Flow: ${telemetry.activeFlow}%
-      - Crowd Density: ${telemetry.crowdDensity}%
-      - Latency: ${telemetry.latency}ms
+      
+      Here is the complete live telemetry data for the venue in JSON format:
+      ${JSON.stringify(telemetryRef.current, null, 2)}
       
       Respond concisely and professionally, using a slightly technical/sci-fi tone appropriate for a high-tech command center. If there are critical alerts or severe weather, prioritize safety and evacuation protocols. You have access to tools to trigger drills, broadcast messages, and dispatch units. Use them when appropriate.`;
 
@@ -106,20 +157,62 @@ export default function AIAssistant({ isOpen, onClose, telemetry, onTriggerEvacD
         { role: 'user', parts: [{ text: userMessage }] }
       ];
 
-      const fetchGeminiResponse = async (contents: Content[]) => {
+      const fetchGeminiResponse = async (contents: Content[], onChunk?: (text: string) => void) => {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents, systemInstruction: systemPrompt })
+          body: JSON.stringify({ contents, systemInstruction: getSystemPrompt() })
         });
         if (!res.ok) {
-          const errorData = await res.json();
+          const errorData = await res.json().catch(() => ({}));
           throw new Error(errorData.error || 'Failed to fetch response from server');
         }
-        return await res.json();
+        
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error("No reader available");
+        
+        const decoder = new TextDecoder();
+        let fullText = '';
+        let functionCalls: any[] = [];
+        let candidates: any[] = [];
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunkStr = decoder.decode(value, { stream: true });
+          const lines = chunkStr.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.slice(6);
+              if (dataStr === '[DONE]') continue;
+              try {
+                const data = JSON.parse(dataStr);
+                if (data.text) {
+                  fullText += data.text;
+                  if (onChunk) onChunk(fullText);
+                }
+                if (data.functionCalls && data.functionCalls.length > 0) {
+                  functionCalls = data.functionCalls;
+                }
+                if (data.candidates && data.candidates.length > 0) {
+                  candidates = data.candidates;
+                }
+              } catch (e) {}
+            }
+          }
+        }
+        
+        return { text: fullText, functionCalls, candidates };
       };
 
-      let response = await fetchGeminiResponse(currentContents);
+      let response = await fetchGeminiResponse(currentContents, (text) => {
+        setMessages(prev => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = { role: 'model', content: text };
+          return newMessages;
+        });
+      });
 
       let functionCalls = response.functionCalls;
       
@@ -163,19 +256,32 @@ export default function AIAssistant({ isOpen, onClose, telemetry, onTriggerEvacD
           parts: functionResponses
         });
         
-        response = await fetchGeminiResponse(currentContents);
+        response = await fetchGeminiResponse(currentContents, (text) => {
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1] = { role: 'model', content: text };
+            return newMessages;
+          });
+        });
         
         functionCalls = response.functionCalls;
       }
 
-      if (response.text) {
-        setMessages(prev => [...prev, { role: 'model', content: response.text }]);
-      } else {
-        setMessages(prev => [...prev, { role: 'model', content: 'Action completed.' }]);
-      }
+      setMessages(prev => {
+        const newMessages = [...prev];
+        if (!newMessages[newMessages.length - 1].content) {
+          newMessages[newMessages.length - 1] = { role: 'model', content: 'Action completed.' };
+        }
+        return newMessages;
+      });
+
     } catch (error) {
       console.error('Error calling Gemini:', error);
-      setMessages(prev => [...prev, { role: 'model', content: 'System error: Unable to connect to Neural Core.' }]);
+      setMessages(prev => {
+        const newMessages = [...prev];
+        newMessages[newMessages.length - 1] = { role: 'model', content: 'System error: Unable to connect to Neural Core.' };
+        return newMessages;
+      });
     } finally {
       setIsLoading(false);
     }
@@ -203,7 +309,7 @@ export default function AIAssistant({ isOpen, onClose, telemetry, onTriggerEvacD
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4" aria-live="polite" aria-atomic="false">
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] rounded-2xl p-3 text-sm ${
@@ -227,24 +333,37 @@ export default function AIAssistant({ isOpen, onClose, telemetry, onTriggerEvacD
       </div>
 
       <div className="p-4 border-t border-outline-variant/30 bg-surface-container">
-        <div className="relative">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Query Neural Core..."
-            aria-label="Message input"
-            className="w-full bg-surface-container-highest border border-outline-variant/50 rounded-xl py-3 pl-4 pr-12 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary-container/50 transition-colors"
-          />
-          <button 
-            onClick={handleSend}
-            disabled={isLoading || !input.trim()}
-            aria-label="Send message"
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-primary-container hover:bg-primary-container/10 rounded-lg transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+        <div className="relative flex items-center gap-2">
+          <button
+            onClick={toggleListening}
+            aria-label={isListening ? "Stop listening" : "Start voice input"}
+            className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl transition-all ${
+              isListening 
+                ? 'bg-error/20 text-error animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.4)]' 
+                : 'bg-surface-container-highest text-slate-400 hover:text-white hover:bg-surface-container-highest border border-outline-variant/50'
+            }`}
           >
-            <Send size={16} />
+            {isListening ? <MicOff size={18} /> : <Mic size={18} />}
           </button>
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder={isListening ? "Listening..." : "Query Neural Core..."}
+              aria-label="Message input"
+              className="w-full bg-surface-container-highest border border-outline-variant/50 rounded-xl py-3 pl-4 pr-12 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary-container/50 transition-colors"
+            />
+            <button 
+              onClick={handleSend}
+              disabled={isLoading || !input.trim()}
+              aria-label="Send message"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-primary-container hover:bg-primary-container/10 rounded-lg transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+            >
+              <Send size={16} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

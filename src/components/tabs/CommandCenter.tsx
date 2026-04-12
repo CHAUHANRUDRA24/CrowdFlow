@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, TrendingUp, TrendingDown, UserX, Unlock, Megaphone, Bot, CloudRain, Coffee, Wind, Clock, Activity, Droplets, CheckCircle2, ChevronRight, Video, Users, X, Shield, HeartPulse, Flame } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, UserX, Unlock, Megaphone, Bot, CloudRain, Coffee, Wind, Clock, Activity, Droplets, CheckCircle2, ChevronRight, Video, Users, X, Shield, HeartPulse, Flame, Send } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, Cell } from 'recharts';
 import { AnimatePresence, motion } from 'motion/react';
 import { Responder, TelemetryData } from '../../types';
@@ -8,15 +8,29 @@ interface CommandCenterProps {
   responders?: Responder[];
   telemetry: TelemetryData;
   onOpenRoster?: () => void;
+  onDispatchUnit?: (unitId: string, location: string) => void;
+  onBroadcastMessage?: (message: string) => void;
 }
 
-const CommandCenter = React.memo(function CommandCenter({ responders = [], telemetry, onOpenRoster }: CommandCenterProps) {
+const CommandCenter = React.memo(function CommandCenter({ 
+  responders = [], 
+  telemetry, 
+  onOpenRoster,
+  onDispatchUnit,
+  onBroadcastMessage
+}: CommandCenterProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showAlertsModal, setShowAlertsModal] = useState(false);
   const [activeProtocol, setActiveProtocol] = useState<string | null>(null);
   
   const [weatherAlert, setWeatherAlert] = useState<{title: string, message: string, type: 'rain' | 'wind'} | null>(null);
   const prevWeatherRef = useRef(telemetry.weather);
+
+  const toggleSelection = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setSelectedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
 
   useEffect(() => {
     const prev = prevWeatherRef.current;
@@ -129,11 +143,12 @@ const CommandCenter = React.memo(function CommandCenter({ responders = [], telem
                 {/* Hotspot 1: Gate C */}
                 <div className="absolute top-1/4 left-1/3 w-32 h-32 bg-error/40 blur-[40px] rounded-full animate-pulse pointer-events-none"></div>
                 <div 
-                  className="absolute top-1/4 left-1/3 w-8 h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-20"
+                  className={`absolute top-1/4 left-1/3 w-8 h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-20 transition-all ${selectedItems.includes('gate-c') ? 'scale-125' : ''}`}
                   onMouseEnter={() => setActiveTooltip('gate-c')}
                   onMouseLeave={() => setActiveTooltip(null)}
+                  onClick={(e) => toggleSelection(e, 'gate-c')}
                 >
-                  <div className="w-full h-full bg-error/20 rounded-full border border-error/50 flex items-center justify-center">
+                  <div className={`w-full h-full rounded-full border flex items-center justify-center transition-colors ${selectedItems.includes('gate-c') ? 'bg-error/40 border-error shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'bg-error/20 border-error/50'}`}>
                     <div className="w-2 h-2 bg-error rounded-full"></div>
                   </div>
                   {/* Tooltip */}
@@ -163,11 +178,12 @@ const CommandCenter = React.memo(function CommandCenter({ responders = [], telem
                 {/* Hotspot 2: Concourse B */}
                 <div className="absolute top-1/2 right-1/4 w-48 h-48 bg-tertiary-fixed-dim/20 blur-[60px] rounded-full pointer-events-none"></div>
                 <div 
-                  className="absolute top-1/2 right-1/4 w-8 h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-20"
+                  className={`absolute top-1/2 right-1/4 w-8 h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-20 transition-all ${selectedItems.includes('concourse-b') ? 'scale-125' : ''}`}
                   onMouseEnter={() => setActiveTooltip('concourse-b')}
                   onMouseLeave={() => setActiveTooltip(null)}
+                  onClick={(e) => toggleSelection(e, 'concourse-b')}
                 >
-                  <div className="w-full h-full bg-tertiary-fixed-dim/20 rounded-full border border-tertiary-fixed-dim/50 flex items-center justify-center">
+                  <div className={`w-full h-full rounded-full border flex items-center justify-center transition-colors ${selectedItems.includes('concourse-b') ? 'bg-tertiary-fixed-dim/40 border-tertiary-fixed-dim shadow-[0_0_15px_rgba(251,188,4,0.8)]' : 'bg-tertiary-fixed-dim/20 border-tertiary-fixed-dim/50'}`}>
                     <div className="w-2 h-2 bg-tertiary-fixed-dim rounded-full"></div>
                   </div>
                   {/* Tooltip */}
@@ -197,11 +213,12 @@ const CommandCenter = React.memo(function CommandCenter({ responders = [], telem
                 {/* Hotspot 3: South Plaza */}
                 <div className="absolute bottom-1/4 left-1/2 w-40 h-40 bg-secondary-fixed/20 blur-[50px] rounded-full pointer-events-none"></div>
                 <div 
-                  className="absolute bottom-1/4 left-1/2 w-8 h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-20"
+                  className={`absolute bottom-1/4 left-1/2 w-8 h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-20 transition-all ${selectedItems.includes('south-plaza') ? 'scale-125' : ''}`}
                   onMouseEnter={() => setActiveTooltip('south-plaza')}
                   onMouseLeave={() => setActiveTooltip(null)}
+                  onClick={(e) => toggleSelection(e, 'south-plaza')}
                 >
-                  <div className="w-full h-full bg-secondary-fixed/20 rounded-full border border-secondary-fixed/50 flex items-center justify-center">
+                  <div className={`w-full h-full rounded-full border flex items-center justify-center transition-colors ${selectedItems.includes('south-plaza') ? 'bg-secondary-fixed/40 border-secondary-fixed shadow-[0_0_15px_rgba(121,255,91,0.8)]' : 'bg-secondary-fixed/20 border-secondary-fixed/50'}`}>
                     <div className="w-2 h-2 bg-secondary-fixed rounded-full"></div>
                   </div>
                   {/* Tooltip */}
@@ -240,16 +257,17 @@ const CommandCenter = React.memo(function CommandCenter({ responders = [], telem
                   return (
                     <div 
                       key={unit.id}
-                      className="absolute flex flex-col items-center cursor-pointer pointer-events-auto z-30 transition-all duration-1000 ease-linear"
+                      className={`absolute flex flex-col items-center cursor-pointer pointer-events-auto z-30 transition-all duration-1000 ease-linear ${selectedItems.includes(unit.id) ? 'scale-125 z-40' : ''}`}
                       style={{ top: `${unit.top}%`, left: `${unit.left}%`, transform: 'translate(-50%, -50%)' }}
                       onMouseEnter={() => setActiveTooltip(unit.id)}
                       onMouseLeave={() => setActiveTooltip(null)}
+                      onClick={(e) => toggleSelection(e, unit.id)}
                     >
                       <div className="relative flex items-center justify-center">
                         {unit.status === 'On Scene' && (
                           <div className={`absolute inset-0 ${colorClass} rounded-full animate-ping opacity-75`}></div>
                         )}
-                        <div className={`relative w-4 h-4 ${colorClass} rounded-full border-2 border-white ${shadowClass} flex items-center justify-center text-surface-container-lowest`}>
+                        <div className={`relative w-4 h-4 ${colorClass} rounded-full border-2 ${selectedItems.includes(unit.id) ? 'border-primary-container' : 'border-white'} ${shadowClass} flex items-center justify-center text-surface-container-lowest transition-colors`}>
                           <Icon size={8} />
                         </div>
                       </div>
@@ -271,6 +289,58 @@ const CommandCenter = React.memo(function CommandCenter({ responders = [], telem
                 })}
               </div>
             </div>
+
+            {/* Floating Action Bar for Multiple Selection */}
+            <AnimatePresence>
+              {selectedItems.length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                  className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface-container-highest/90 backdrop-blur-md border border-outline-variant/30 rounded-full px-4 py-2 flex items-center gap-4 shadow-2xl"
+                >
+                  <span className="text-xs font-bold text-white bg-white/10 px-3 py-1 rounded-full flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+                    {selectedItems.length} Selected
+                  </span>
+                  <div className="w-px h-4 bg-white/10"></div>
+                  <button 
+                    className="text-[10px] font-bold uppercase tracking-wider text-primary-container hover:text-primary hover:bg-primary-container/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                    onClick={() => {
+                      if (onDispatchUnit) {
+                        selectedItems.forEach(id => {
+                          if (id.startsWith('u-') || id.startsWith('emt-') || id.startsWith('fire-')) {
+                            onDispatchUnit(id, 'Selected Hotspot');
+                          }
+                        });
+                      }
+                      setSelectedItems([]);
+                    }}
+                  >
+                    <Send size={14} /> Dispatch Units
+                  </button>
+                  <button 
+                    className="text-[10px] font-bold uppercase tracking-wider text-tertiary-fixed-dim hover:text-tertiary-fixed hover:bg-tertiary-fixed-dim/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                    onClick={() => {
+                      if (onBroadcastMessage) {
+                        onBroadcastMessage(`Attention: Bulk action initiated for ${selectedItems.join(', ')}.`);
+                      }
+                      setSelectedItems([]);
+                    }}
+                  >
+                    <Megaphone size={14} /> Broadcast
+                  </button>
+                  <div className="w-px h-4 bg-white/10"></div>
+                  <button 
+                    className="text-slate-400 hover:text-white hover:bg-white/10 p-1.5 rounded-full transition-colors" 
+                    onClick={() => setSelectedItems([])}
+                    aria-label="Clear selection"
+                  >
+                    <X size={14} />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Key Metrics */}
@@ -403,9 +473,10 @@ const CommandCenter = React.memo(function CommandCenter({ responders = [], telem
             </div>
             <button 
               onClick={onOpenRoster}
-              className="w-full mt-6 py-3 border border-outline-variant/30 text-white text-xs font-bold uppercase rounded-xl hover:bg-white/5 transition-colors"
+              className="w-full mt-6 py-4 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold rounded-xl active:scale-95 transition-all uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:shadow-[0_0_20px_rgba(0,240,255,0.3)]"
             >
-              View Detailed Roster
+              <Shield size={16} className="fill-current" />
+              View Roster
             </button>
           </section>
 
@@ -637,7 +708,7 @@ const CommandCenter = React.memo(function CommandCenter({ responders = [], telem
       {/* Active Alerts Modal */}
       {showAlertsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-surface-container-low border border-white/10 rounded-3xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-[#1a1c23] border border-white/5 rounded-3xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center mb-6">
               <h2 className="font-headline text-2xl font-bold text-white tracking-tight uppercase flex items-center gap-2">
                 <AlertTriangle className="text-error" size={24} />
@@ -653,34 +724,47 @@ const CommandCenter = React.memo(function CommandCenter({ responders = [], telem
             </div>
 
             <div className="space-y-4">
-              {telemetry.activeAlerts?.map((alert, i) => (
-                <div key={alert.id || i} className={`p-4 rounded-xl border-l-4 ${alert.severity === 'critical' ? 'bg-error/10 border-error' : alert.severity === 'warning' ? 'bg-orange-500/10 border-orange-500' : 'bg-primary-container/10 border-primary-container'} flex items-start gap-4`}>
-                  <div className="mt-1">
-                    <AlertTriangle size={20} className={alert.severity === 'critical' ? 'text-error' : alert.severity === 'warning' ? 'text-orange-500' : 'text-primary-container'} />
+              <div className="p-5 rounded-2xl border-l-4 bg-[#2a2425] border-[#ff8a80] flex items-start gap-4">
+                <div className="mt-1">
+                  <AlertTriangle size={20} className="text-[#ff8a80]" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-bold uppercase tracking-wider text-[#ff8a80]">Overcrowding Event</h4>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">02:45m ago</span>
                   </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <h4 className={`font-bold uppercase tracking-wider ${alert.severity === 'critical' ? 'text-error' : alert.severity === 'warning' ? 'text-orange-500' : 'text-primary-container'}`}>{alert.title}</h4>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">{alert.time}</span>
-                    </div>
-                    <p className="text-sm mt-1 text-slate-300">{alert.description}</p>
-                    <div className="mt-3 flex gap-2">
-                      <button className="px-3 py-1.5 bg-surface-container-high hover:bg-surface-container-highest text-white text-[10px] font-bold uppercase rounded transition-colors">
-                        View Cameras
-                      </button>
-                      <button className="px-3 py-1.5 bg-surface-container-high hover:bg-surface-container-highest text-white text-[10px] font-bold uppercase rounded transition-colors">
-                        Dispatch Unit
-                      </button>
-                    </div>
+                  <p className="text-sm mt-1 text-slate-300">Gate C capacity exceeded by 24%.</p>
+                  <div className="mt-4 flex gap-3">
+                    <button className="px-4 py-2 bg-[#252730] hover:bg-[#2f313a] text-white text-[10px] font-bold uppercase rounded-lg transition-colors">
+                      View Cameras
+                    </button>
+                    <button className="px-4 py-2 bg-[#252730] hover:bg-[#2f313a] text-white text-[10px] font-bold uppercase rounded-lg transition-colors">
+                      Dispatch Unit
+                    </button>
                   </div>
                 </div>
-              ))}
-              {(!telemetry.activeAlerts || telemetry.activeAlerts.length === 0) && (
-                <div className="text-center py-8 text-slate-400">
-                  <CheckCircle2 size={48} className="mx-auto mb-4 text-secondary-fixed opacity-50" />
-                  <p className="font-bold uppercase tracking-widest">No Active Alerts</p>
+              </div>
+
+              <div className="p-5 rounded-2xl border-l-4 bg-[#2f2216] border-[#ff6d00] flex items-start gap-4">
+                <div className="mt-1">
+                  <AlertTriangle size={20} className="text-[#ff6d00]" />
                 </div>
-              )}
+                <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-bold uppercase tracking-wider text-[#ff6d00]">Medical Emergency</h4>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">08:12m ago</span>
+                  </div>
+                  <p className="text-sm mt-1 text-slate-300">Sector 102 - Row J. Fainting reported.</p>
+                  <div className="mt-4 flex gap-3">
+                    <button className="px-4 py-2 bg-[#252730] hover:bg-[#2f313a] text-white text-[10px] font-bold uppercase rounded-lg transition-colors">
+                      View Cameras
+                    </button>
+                    <button className="px-4 py-2 bg-[#252730] hover:bg-[#2f313a] text-white text-[10px] font-bold uppercase rounded-lg transition-colors">
+                      Dispatch Unit
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
