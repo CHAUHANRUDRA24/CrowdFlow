@@ -32,7 +32,12 @@ import Emergency from './components/tabs/Emergency';
 import Login from './components/Login';
 import { Responder, TelemetryData } from './types';
 import { auth } from './firebase';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  signOut,
+  User,
+  getRedirectResult,
+} from 'firebase/auth';
 import { useTelemetry } from './hooks/useTelemetry';
 
 export default function App() {
@@ -45,6 +50,11 @@ export default function App() {
       setUser(currentUser);
       setIsAuthReady(true);
     });
+
+    getRedirectResult(auth).catch((error) => {
+      console.error("Redirect login error:", error);
+    });
+
     return () => unsubscribe();
   }, []);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);

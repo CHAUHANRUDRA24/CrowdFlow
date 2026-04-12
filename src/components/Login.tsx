@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithRedirect } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import { Shield, Lock, AlertTriangle, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -16,12 +16,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     setIsLoading(true);
     setError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
-      onLoginSuccess();
+      await signInWithRedirect(auth, googleProvider);
+      // onLoginSuccess() is not called here because the page will redirect
     } catch (err: any) {
       console.error("Login error:", err);
       setError(err.message || "Failed to authenticate. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };
