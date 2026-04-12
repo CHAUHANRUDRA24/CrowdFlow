@@ -2,16 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, TrendingUp, TrendingDown, UserX, Unlock, Megaphone, Bot, CloudRain, Coffee, Wind, Clock, Activity, Droplets, CheckCircle2, ChevronRight, Video, Users, X, Shield, HeartPulse, Flame } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, Cell } from 'recharts';
 import { AnimatePresence, motion } from 'motion/react';
-import { Responder, TelemetryData } from '../../App';
+import { Responder, TelemetryData } from '../../types';
 
 interface CommandCenterProps {
   responders?: Responder[];
   telemetry: TelemetryData;
+  onOpenRoster?: () => void;
 }
 
-export default function CommandCenter({ responders = [], telemetry }: CommandCenterProps) {
+const CommandCenter = React.memo(function CommandCenter({ responders = [], telemetry, onOpenRoster }: CommandCenterProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-  const [showRosterModal, setShowRosterModal] = useState(false);
   const [showAlertsModal, setShowAlertsModal] = useState(false);
   const [activeProtocol, setActiveProtocol] = useState<string | null>(null);
   
@@ -62,6 +62,8 @@ export default function CommandCenter({ responders = [], telemetry }: CommandCen
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            role="alert"
+            aria-live="polite"
             className={`p-4 rounded-xl border-l-4 shadow-lg flex items-start gap-4 ${
               weatherAlert.type === 'rain' 
                 ? 'bg-secondary-fixed/10 border-secondary-fixed text-secondary-fixed' 
@@ -76,6 +78,7 @@ export default function CommandCenter({ responders = [], telemetry }: CommandCen
                 <h4 className="font-bold uppercase tracking-wider">{weatherAlert.title}</h4>
                 <button 
                   onClick={() => setWeatherAlert(null)}
+                  aria-label="Close weather alert"
                   className="opacity-70 hover:opacity-100 transition-opacity"
                 >
                   <X size={16} />
@@ -290,7 +293,7 @@ export default function CommandCenter({ responders = [], telemetry }: CommandCen
             </div>
             <div className="bg-surface-container rounded-2xl p-5 hover:-translate-y-1 transition-transform duration-300">
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Active Incidents</p>
-              <h4 className="font-headline text-3xl font-bold text-error">03</h4>
+              <h4 className="font-headline text-3xl font-bold text-error">{telemetry.activeIncidents.toString().padStart(2, '0')}</h4>
               <p className="text-[10px] text-slate-400 mt-1 uppercase">Resolving (Stage 2)</p>
             </div>
             <div className="bg-surface-container rounded-2xl p-5 hover:-translate-y-1 transition-transform duration-300">
@@ -399,7 +402,7 @@ export default function CommandCenter({ responders = [], telemetry }: CommandCen
               ))}
             </div>
             <button 
-              onClick={() => setShowRosterModal(true)}
+              onClick={onOpenRoster}
               className="w-full mt-6 py-3 border border-outline-variant/30 text-white text-xs font-bold uppercase rounded-xl hover:bg-white/5 transition-colors"
             >
               View Detailed Roster
@@ -642,6 +645,7 @@ export default function CommandCenter({ responders = [], telemetry }: CommandCen
               </h2>
               <button 
                 onClick={() => setShowAlertsModal(false)}
+                aria-label="Close alerts modal"
                 className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
               >
                 <X size={24} />
@@ -682,80 +686,6 @@ export default function CommandCenter({ responders = [], telemetry }: CommandCen
         </div>
       )}
 
-      {/* Roster Modal */}
-      {showRosterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-surface-container-low border border-white/10 rounded-3xl p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="font-headline text-2xl font-bold text-white tracking-tight uppercase flex items-center gap-2">
-                <Users className="text-primary-container" size={24} />
-                Detailed Staff Roster
-              </h2>
-              <button 
-                onClick={() => setShowRosterModal(false)}
-                className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[
-                { id: 'A-09', name: 'Unit Alpha-09', role: 'Crowd Control', sector: 'North Plaza', status: 'Active', hr: 84, fat: 12, img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDoLRNIKQYjla6LjjUeo76rOFQNKSDiKwhEzRMPpwUnf4_Ah65r7oTvQBr-wWN_jUbB1kTVOf_qduLXqABpyuBlKJAXa9AngylJu2KHjkhkPt8C0frhYr10mciYKKrMs2j7Oy2CDSYR7BQVOmh7QEYPDmUkY8-fLZna7D82_--2-VzZdLEKNpAo2GekXYwRAhjHS6QLI550jCVp8kr5dg-3mMUTtCPIMVHb6hlNqtOcwzAH9N4RDkXBfYb1u4VWjr-wj-k647wuxZRO' },
-                { id: 'G-14', name: 'Unit Gamma-14', role: 'Security', sector: 'Gate B Crowds', status: 'Responding', hr: 142, fat: 88, img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA5c9PRbIXmMJ5P8ETIk7OJnGRLo5MorVr39esSMloPHCDi2G6cRuLKIOzY_LV13ikc2ab24Dk9xIbpbzd5o_dFE1sRTdcheMoSR7wTntFcCV7032and1cRAyqL4zZxO836C4o4UmUWlgOaNxP42kRt6ZBYtVIULsB9qn8qMjJ-__h5TmIEu3ZfcVw8cuz3426jFIpRLIerLTRtTCahO9EdJsR-RqgSuczIN6QORL56EwW-QKv0NyngmCgsDR1qmY1c56jGYtxheFbF' },
-                { id: 'M-03', name: 'Medic-03', role: 'Medical', sector: 'Concourse 2', status: 'Active', hr: 62, fat: 45, img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAKkvH73dOz6MUCAHuKILiyDK9w-AjtY7NTIE_bNkq9ku-JLbnDPsehhXDeKSE_dj1C0Epaf3rQvCjJrRRgaoC9iCHwSsBuaB-fQDGAJA6lusmnyGN85X9A40UPmYMYDIXkOSCiRT45Ih5NZkZ4l3MKq4Qx0efyTuNDalQHuK2a65faiYTIZmeGqTgCyXzUwgUT4OYuEB5Vwqk4uQXSOratR0W_N6uvuYSi-XPSTrUE01oeB-L0gQa2X1P2LDByZxAgVuiTx7parhcF' },
-                { id: 'B-02', name: 'Unit Beta-02', role: 'Crowd Control', sector: 'South Plaza', status: 'Active', hr: 91, fat: 28, img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200' },
-                { id: 'D-11', name: 'Unit Delta-11', role: 'Security', sector: 'Gate C', status: 'Active', hr: 78, fat: 15, img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200' },
-                { id: 'M-01', name: 'Medic-01', role: 'Medical', sector: 'Sector 102', status: 'Responding', hr: 115, fat: 60, img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200' },
-              ].map((staff, i) => (
-                <div key={i} className="bg-surface-container rounded-2xl p-4 border border-white/5 flex flex-col gap-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <img src={staff.img} alt={staff.name} className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" />
-                      <div>
-                        <p className="text-sm font-bold text-white">{staff.name}</p>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-widest">{staff.role}</p>
-                      </div>
-                    </div>
-                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${
-                      staff.status === 'Active' ? 'bg-secondary-fixed/10 text-secondary-fixed' : 'bg-tertiary-fixed-dim/10 text-tertiary-fixed-dim'
-                    }`}>
-                      {staff.status}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-surface-container-lowest p-2 rounded-lg">
-                      <p className="text-[9px] text-slate-500 uppercase font-bold mb-1">Sector</p>
-                      <p className="text-xs font-semibold text-white">{staff.sector}</p>
-                    </div>
-                    <div className="bg-surface-container-lowest p-2 rounded-lg">
-                      <p className="text-[9px] text-slate-500 uppercase font-bold mb-1">ID</p>
-                      <p className="text-xs font-mono text-slate-300">{staff.id}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <p className="text-[9px] text-slate-500 uppercase font-bold mb-0.5">Heart Rate</p>
-                        <p className={`text-xs font-bold ${staff.hr > 120 ? 'text-error animate-pulse' : 'text-secondary-fixed'}`}>{staff.hr} bpm</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] text-slate-500 uppercase font-bold mb-0.5">Fatigue</p>
-                        <p className={`text-xs font-bold ${staff.fat > 70 ? 'text-error' : 'text-slate-300'}`}>{staff.fat}%</p>
-                      </div>
-                    </div>
-                    <button className="px-3 py-1.5 bg-primary-container/10 text-primary-container hover:bg-primary-container/20 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors">
-                      Comms
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
       {/* Protocol Modal */}
       {activeProtocol && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -768,6 +698,7 @@ export default function CommandCenter({ responders = [], telemetry }: CommandCen
               </h2>
               <button 
                 onClick={() => setActiveProtocol(null)}
+                aria-label="Close protocol modal"
                 className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
               >
                 <X size={20} />
@@ -822,4 +753,6 @@ export default function CommandCenter({ responders = [], telemetry }: CommandCen
       )}
     </div>
   );
-}
+});
+
+export default CommandCenter;

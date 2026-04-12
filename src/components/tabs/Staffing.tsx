@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Brain, Send, HeartPulse, Activity, CheckCircle2, Loader2, Shield, Flame } from 'lucide-react';
-import { Responder, TelemetryData } from '../../App';
+import { Responder, TelemetryData } from '../../types';
 
 interface StaffingProps {
   responders?: Responder[];
   telemetry: TelemetryData;
 }
 
-export default function Staffing({ responders = [], telemetry }: StaffingProps) {
+const Staffing = React.memo(function Staffing({ responders = [], telemetry }: StaffingProps) {
   const [executeState, setExecuteState] = useState<'idle' | 'executing' | 'completed' | 'dismissed'>('idle');
   const [rotationState, setRotationState] = useState<'idle' | 'scheduling' | 'completed' | 'dismissed'>('idle');
   
@@ -313,4 +313,6 @@ export default function Staffing({ responders = [], telemetry }: StaffingProps) 
       </div>
     </div>
   );
-}
+});
+
+export default Staffing;

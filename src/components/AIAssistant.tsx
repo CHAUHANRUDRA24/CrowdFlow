@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, X, Loader2 } from 'lucide-react';
-import { GoogleGenAI, Type, FunctionDeclaration, Content } from '@google/genai';
+import { Type, FunctionDeclaration, Content } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: (import.meta as any).env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY });
-
-import { TelemetryData } from '../App';
+import { TelemetryData } from '../types';
 
 interface Message {
   role: 'user' | 'model';
@@ -108,14 +106,20 @@ export default function AIAssistant({ isOpen, onClose, telemetry, onTriggerEvacD
         { role: 'user', parts: [{ text: userMessage }] }
       ];
 
-      let response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
-        contents: currentContents,
-        config: {
-          systemInstruction: systemPrompt,
-          tools: [{ functionDeclarations: [triggerEvacDrillDeclaration, endEvacDrillDeclaration, broadcastMessageDeclaration, dispatchUnitDeclaration] }]
+      const fetchGeminiResponse = async (contents: Content[]) => {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents, systemInstruction: systemPrompt })
+        });
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to fetch response from server');
         }
-      });
+        return await res.json();
+      };
+
+      let response = await fetchGeminiResponse(currentContents);
 
       let functionCalls = response.functionCalls;
       
@@ -159,14 +163,7 @@ export default function AIAssistant({ isOpen, onClose, telemetry, onTriggerEvacD
           parts: functionResponses
         });
         
-        response = await ai.models.generateContent({
-          model: 'gemini-3.1-pro-preview',
-          contents: currentContents,
-          config: {
-            systemInstruction: systemPrompt,
-            tools: [{ functionDeclarations: [triggerEvacDrillDeclaration, endEvacDrillDeclaration, broadcastMessageDeclaration, dispatchUnitDeclaration] }]
-          }
-        });
+        response = await fetchGeminiResponse(currentContents);
         
         functionCalls = response.functionCalls;
       }
@@ -201,7 +198,7 @@ export default function AIAssistant({ isOpen, onClose, telemetry, onTriggerEvacD
             </p>
           </div>
         </div>
-        <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+        <button onClick={onClose} aria-label="Close AI Assistant" className="text-slate-400 hover:text-white transition-colors">
           <X size={20} />
         </button>
       </div>
@@ -237,11 +234,13 @@ export default function AIAssistant({ isOpen, onClose, telemetry, onTriggerEvacD
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Query Neural Core..."
+            aria-label="Message input"
             className="w-full bg-surface-container-highest border border-outline-variant/50 rounded-xl py-3 pl-4 pr-12 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary-container/50 transition-colors"
           />
           <button 
             onClick={handleSend}
             disabled={isLoading || !input.trim()}
+            aria-label="Send message"
             className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-primary-container hover:bg-primary-container/10 rounded-lg transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
           >
             <Send size={16} />

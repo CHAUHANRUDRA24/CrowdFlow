@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Users, Clock, Activity } from 'lucide-react';
 
-import { TelemetryData } from '../../App';
+import { TelemetryData } from '../../types';
 
 interface AnalyticsProps {
   telemetry: TelemetryData;
 }
 
-export default function Analytics({ telemetry }: AnalyticsProps) {
+const Analytics = React.memo(function Analytics({ telemetry }: AnalyticsProps) {
   const [attendanceData, setAttendanceData] = useState([
     { time: '18:00', count: 12000 },
     { time: '18:30', count: 25000 },
@@ -100,4 +100,6 @@ export default function Analytics({ telemetry }: AnalyticsProps) {
       </div>
     </div>
   );
-}
+});
+
+export default Analytics;

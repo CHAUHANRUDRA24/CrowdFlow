@@ -44,3 +44,8 @@ body {
   0%, 100% { transform: rotate(-10deg); }
   50% { transform: rotate(10deg); }
 }
+
+@keyframes scan {
+  0% { top: -20%; }
+  100% { top: 120%; }
+}

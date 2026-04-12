@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Phone, Megaphone, CheckCircle, Route, EyeOff, Send, Shield, HeartPulse, Flame, MessageSquare, Mic, ChevronDown, ChevronUp, Activity, Users, Video, Smartphone, Monitor, AlertTriangle, Layers, BellRing, Radio, X, ThermometerSun } from 'lucide-react';
-import { Responder, TelemetryData } from '../../App';
+import { Responder, TelemetryData } from '../../types';
 
 interface EmergencyProps {
   responders: Responder[];
   telemetry: TelemetryData;
 }
 
-export default function Emergency({ responders, telemetry }: EmergencyProps) {
+const Emergency = React.memo(function Emergency({ responders, telemetry }: EmergencyProps) {
   const [expandedIncident, setExpandedIncident] = useState<string | null>(null);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [previewMode, setPreviewMode] = useState<'mobile' | 'signage'>('mobile');
@@ -1057,4 +1057,6 @@ export default function Emergency({ responders, telemetry }: EmergencyProps) {
       </div>
     </div>
   );
-}
+});
+
+export default Emergency;

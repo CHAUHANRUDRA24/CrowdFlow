@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Users, ThermometerSun, Shield, HeartPulse, Flame } from 'lucide-react';
-import { Responder, TelemetryData } from '../../App';
+import { Responder, TelemetryData } from '../../types';
 
 interface HeatmapsProps {
   responders?: Responder[];
   telemetry: TelemetryData;
 }
 
-export default function Heatmaps({ responders = [], telemetry }: HeatmapsProps) {
+const Heatmaps = React.memo(function Heatmaps({ responders = [], telemetry }: HeatmapsProps) {
   const [activeLayer, setActiveLayer] = useState('Density');
   const [blobs, setBlobs] = useState([
     { top: 25, left: 33, size: 64, color: 'bg-error/40' },
@@ -58,6 +58,16 @@ export default function Heatmaps({ responders = [], telemetry }: HeatmapsProps) 
           />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-surface to-transparent opacity-80"></div>
+        
+        {/* Live Scanning Effect */}
+        <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
+          <div className="w-full h-32 absolute animate-[scan_4s_linear_infinite] bg-gradient-to-b from-transparent via-primary-container/5 to-primary-container/20 border-b border-primary-container/40 shadow-[0_4px_20px_rgba(0,240,255,0.2)]"></div>
+        </div>
+
+        <div className="absolute top-6 right-6 z-20 flex items-center gap-2 glass-panel px-3 py-1.5 rounded-lg border border-primary-container/20">
+          <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse shadow-[0_0_8px_rgba(0,240,255,0.8)]"></div>
+          <span className="text-[10px] font-bold text-primary-container uppercase tracking-widest">Live Scan Active</span>
+        </div>
         
         {/* Heatmap Blobs */}
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
@@ -131,4 +141,6 @@ export default function Heatmaps({ responders = [], telemetry }: HeatmapsProps) 
       </div>
     </div>
   );
-}
+});
+
+export default Heatmaps;

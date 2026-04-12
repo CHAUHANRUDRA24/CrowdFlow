@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   LayoutDashboard,
   BarChart2,
@@ -18,7 +18,8 @@ import {
   Megaphone,
   Bot,
   X,
-  HeartPulse
+  HeartPulse,
+  Shield
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import AIAssistant from './components/AIAssistant';
@@ -27,55 +28,20 @@ import Analytics from './components/tabs/Analytics';
 import Staffing from './components/tabs/Staffing';
 import Heatmaps from './components/tabs/Heatmaps';
 import Emergency from './components/tabs/Emergency';
-
-export interface Responder {
-  id: string;
-  name: string;
-  type: string;
-  top: number;
-  left: number;
-  status: string;
-  eta: string;
-}
-
-export interface TelemetryData {
-  weather: { temp: number; wind: number; precip: number; condition: string };
-  attendance: number;
-  gateThroughput: number;
-  avgWaitTime: number;
-  waits: { ca: number; cb: number; rn: number; rs: number };
-  activeFlow: number;
-  fireTemp: number;
-  crowdDensity: number;
-  patientHeartRate: number;
-  units: Record<string, { hr: number; fat: number }>;
-  peakCapacity: number;
-  dwellTime: number;
-  growth: number;
-  gateFlows: { gate: string; flow: number; color: string }[];
-  flowData: { value: number }[];
-  sectorDist: number;
-  latency: number;
-  onlineFeeds: number;
-  activeComms: number;
-  activeIncidents: number;
-  criticalAlerts: number;
-  unitsDeployed: number;
-  velocity: number;
-  activeAlerts: { id: string; title: string; description: string; time: string; severity: 'critical' | 'warning' | 'info' }[];
-}
+import { Responder, TelemetryData } from './types';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [showRosterModal, setShowRosterModal] = useState(false);
   const [globalAlert, setGlobalAlert] = useState<{title: string, message: string} | null>(null);
   const [bellShaking, setBellShaking] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const [activeScenario, setActiveScenario] = useState<'none' | 'evacuation'>('none');
   const activeScenarioRef = useRef<'none' | 'evacuation'>('none');
 
-  const triggerScenario = (scenario: 'none' | 'evacuation') => {
+  const triggerScenario = useCallback((scenario: 'none' | 'evacuation') => {
     if (activeScenario === scenario) {
       setActiveScenario('none');
       activeScenarioRef.current = 'none';
@@ -92,25 +58,25 @@ export default function App() {
       setBellShaking(true);
       setTimeout(() => setBellShaking(false), 5000);
     }
-  };
+  }, [activeScenario]);
 
-  const dispatchUnit = (unitId: string, location: string) => {
+  const dispatchUnit = useCallback((unitId: string, location: string) => {
     setResponders(prev => prev.map(unit => {
       if (unit.id === unitId) {
         return { ...unit, status: 'En Route', eta: '2m 00s' }; // Simplified dispatch
       }
       return unit;
     }));
-  };
+  }, []);
 
-  const broadcastMessage = (message: string) => {
+  const broadcastMessage = useCallback((message: string) => {
     setGlobalAlert({
       title: "AI BROADCAST",
       message: message
     });
     setBellShaking(true);
     setTimeout(() => setBellShaking(false), 5000);
-  };
+  }, []);
 
   const [responders, setResponders] = useState<Responder[]>([
     { id: 'u-7', name: 'Unit 7', type: 'security', top: 40, left: 35, status: 'En Route', eta: '1m 30s' },
@@ -299,7 +265,7 @@ export default function App() {
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'Dashboard': return <CommandCenter responders={responders} telemetry={telemetry} />;
+      case 'Dashboard': return <CommandCenter responders={responders} telemetry={telemetry} onOpenRoster={() => setShowRosterModal(true)} />;
       case 'Analytics': return <Analytics telemetry={telemetry} />;
       case 'Staffing': return <Staffing responders={responders} telemetry={telemetry} />;
       case 'Heatmaps': return <Heatmaps responders={responders} telemetry={telemetry} />;
@@ -317,6 +283,8 @@ export default function App() {
             initial={{ opacity: 0, y: -50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -50, scale: 0.9 }}
+            role="alert"
+            aria-live="assertive"
             className="absolute top-6 right-6 z-[100] w-96 bg-surface-container-highest border-l-4 border-error rounded-xl shadow-[0_10px_40px_rgba(239,68,68,0.2)] overflow-hidden"
           >
             <div className="p-4 flex items-start gap-3">
@@ -328,6 +296,7 @@ export default function App() {
                   <h4 className="text-error font-bold text-sm uppercase tracking-wider">{globalAlert.title}</h4>
                   <button 
                     onClick={() => setGlobalAlert(null)}
+                    aria-label="Close global alert"
                     className="text-slate-400 hover:text-white transition-colors"
                   >
                     <X size={16} />
@@ -390,9 +359,12 @@ export default function App() {
         </nav>
 
         <div className="px-4 mt-auto mb-8">
-          <button className="w-full py-4 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold rounded-xl active:scale-95 transition-all uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:shadow-[0_0_20px_rgba(0,240,255,0.3)]">
-            <AlertTriangle size={16} className="fill-current" />
-            Active Alerts
+          <button 
+            onClick={() => setShowRosterModal(true)}
+            className="w-full py-4 bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold rounded-xl active:scale-95 transition-all uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:shadow-[0_0_20px_rgba(0,240,255,0.3)]"
+          >
+            <Shield size={16} className="fill-current" />
+            View Roster
           </button>
         </div>
       </aside>
@@ -410,22 +382,10 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-4 border-r border-outline-variant/20 pr-6">
-              <button
-                onClick={() => triggerScenario('evacuation')}
-                className={`px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-colors flex items-center gap-2 ${
-                  activeScenario === 'evacuation'
-                    ? 'bg-error text-white animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]'
-                    : 'bg-surface-container-high text-slate-300 hover:bg-surface-container-highest border border-error/30 hover:border-error/60'
-                }`}
-              >
-                <AlertTriangle size={14} />
-                {activeScenario === 'evacuation' ? 'End Evac Drill' : 'Run Evac Drill'}
-              </button>
-            </div>
             <div className="flex items-center gap-3 relative">
               <button 
                 onClick={() => setIsAIPanelOpen(!isAIPanelOpen)}
+                aria-label="Open AI Assistant"
                 className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
                   isAIPanelOpen 
                     ? 'bg-primary-container text-on-primary-container shadow-[0_0_15px_rgba(0,240,255,0.4)]' 
@@ -437,6 +397,7 @@ export default function App() {
               <div className="relative" ref={notificationsRef}>
                 <button 
                   onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  aria-label="Notifications"
                   className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
                     isNotificationsOpen
                       ? 'bg-surface-container-highest text-white'
@@ -555,6 +516,94 @@ export default function App() {
         onBroadcastMessage={broadcastMessage}
         onDispatchUnit={dispatchUnit}
       />
+
+      {/* Roster Modal */}
+      <AnimatePresence>
+        {showRosterModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface-container-low border border-white/10 rounded-3xl p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto shadow-2xl flex flex-col"
+            >
+              <div className="flex justify-between items-center mb-6 shrink-0">
+                <h2 className="font-headline text-2xl font-bold text-white tracking-tight uppercase flex items-center gap-2">
+                  <Users className="text-primary-container" size={24} />
+                  Detailed Staff Roster
+                </h2>
+                <button 
+                  onClick={() => setShowRosterModal(false)}
+                  aria-label="Close roster modal"
+                  className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pr-2 pb-4">
+                {[
+                  { id: 'A-09', name: 'Unit Alpha-09', role: 'Crowd Control', sector: 'North Plaza', status: 'Active', hr: 84, fat: 12, img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDoLRNIKQYjla6LjjUeo76rOFQNKSDiKwhEzRMPpwUnf4_Ah65r7oTvQBr-wWN_jUbB1kTVOf_qduLXqABpyuBlKJAXa9AngylJu2KHjkhkPt8C0frhYr10mciYKKrMs2j7Oy2CDSYR7BQVOmh7QEYPDmUkY8-fLZna7D82_--2-VzZdLEKNpAo2GekXYwRAhjHS6QLI550jCVp8kr5dg-3mMUTtCPIMVHb6hlNqtOcwzAH9N4RDkXBfYb1u4VWjr-wj-k647wuxZRO' },
+                  { id: 'G-14', name: 'Unit Gamma-14', role: 'Security', sector: 'Gate B Crowds', status: 'Responding', hr: 142, fat: 88, img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA5c9PRbIXmMJ5P8ETIk7OJnGRLo5MorVr39esSMloPHCDi2G6cRuLKIOzY_LV13ikc2ab24Dk9xIbpbzd5o_dFE1sRTdcheMoSR7wTntFcCV7032and1cRAyqL4zZxO836C4o4UmUWlgOaNxP42kRt6ZBYtVIULsB9qn8qMjJ-__h5TmIEu3ZfcVw8cuz3426jFIpRLIerLTRtTCahO9EdJsR-RqgSuczIN6QORL56EwW-QKv0NyngmCgsDR1qmY1c56jGYtxheFbF' },
+                  { id: 'M-03', name: 'Medic-03', role: 'Medical', sector: 'Concourse 2', status: 'Active', hr: 62, fat: 45, img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAKkvH73dOz6MUCAHuKILiyDK9w-AjtY7NTIE_bNkq9ku-JLbnDPsehhXDeKSE_dj1C0Epaf3rQvCjJrRRgaoC9iCHwSsBuaB-fQDGAJA6lusmnyGN85X9A40UPmYMYDIXkOSCiRT45Ih5NZkZ4l3MKq4Qx0efyTuNDalQHuK2a65faiYTIZmeGqTgCyXzUwgUT4OYuEB5Vwqk4uQXSOratR0W_N6uvuYSi-XPSTrUE01oeB-L0gQa2X1P2LDByZxAgVuiTx7parhcF' },
+                  { id: 'B-02', name: 'Unit Beta-02', role: 'Crowd Control', sector: 'South Plaza', status: 'Active', hr: 91, fat: 28, img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200' },
+                  { id: 'D-11', name: 'Unit Delta-11', role: 'Security', sector: 'Gate C', status: 'Active', hr: 78, fat: 15, img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200' },
+                  { id: 'M-01', name: 'Medic-01', role: 'Medical', sector: 'Sector 102', status: 'Responding', hr: 115, fat: 60, img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200' },
+                ].map((staff, i) => (
+                  <div key={i} className="bg-surface-container rounded-2xl p-4 border border-white/5 flex flex-col gap-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <img src={staff.img} alt={staff.name} className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                        <div>
+                          <p className="text-sm font-bold text-white">{staff.name}</p>
+                          <p className="text-[10px] text-slate-400 uppercase tracking-widest">{staff.role}</p>
+                        </div>
+                      </div>
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${
+                        staff.status === 'Active' ? 'bg-secondary-fixed/10 text-secondary-fixed' : 'bg-tertiary-fixed-dim/10 text-tertiary-fixed-dim'
+                      }`}>
+                        {staff.status}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-surface-container-lowest p-2 rounded-lg">
+                        <p className="text-[9px] text-slate-500 uppercase font-bold mb-1">Sector</p>
+                        <p className="text-xs font-semibold text-white">{staff.sector}</p>
+                      </div>
+                      <div className="bg-surface-container-lowest p-2 rounded-lg">
+                        <p className="text-[9px] text-slate-500 uppercase font-bold mb-1">ID</p>
+                        <p className="text-xs font-mono text-slate-300">{staff.id}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <p className="text-[9px] text-slate-500 uppercase font-bold mb-0.5">Heart Rate</p>
+                          <p className={`text-xs font-bold ${staff.hr > 120 ? 'text-error animate-pulse' : 'text-secondary-fixed'}`}>{staff.hr} bpm</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-slate-500 uppercase font-bold mb-0.5">Fatigue</p>
+                          <p className={`text-xs font-bold ${staff.fat > 70 ? 'text-error' : 'text-slate-300'}`}>{staff.fat}%</p>
+                        </div>
+                      </div>
+                      <button className="px-3 py-1.5 bg-primary-container/10 text-primary-container hover:bg-primary-container/20 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors">
+                        Comms
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
