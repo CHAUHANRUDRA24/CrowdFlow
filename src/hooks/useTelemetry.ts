@@ -153,7 +153,7 @@ export function useTelemetry() {
           }
         }
 
-        const newTelemetry = {
+        return {
           ...prev,
           weather: {
             temp: isEvac ? Number((prev.weather.temp - 1.2).toFixed(1)) : Number((prev.weather.temp + (Math.random() * 0.2 - 0.1)).toFixed(1)),
@@ -194,30 +194,6 @@ export function useTelemetry() {
           velocity: Number((Math.max(0.1, prev.velocity + (isEvac ? 0.2 : (Math.random() * 0.1 - 0.05)))).toFixed(2)),
           activeAlerts: nextAlerts
         };
-
-        // Real-time Validation
-        const validationAlerts: typeof nextAlerts = [];
-        if (newTelemetry.crowdDensity > 95) {
-          console.warn('CRITICAL: Crowd density exceeded 95%');
-          validationAlerts.push({ id: `alert-${Date.now()}-density`, title: 'DENSITY CRITICAL', description: 'Crowd density exceeded 95% safety threshold.', time: 'Just Now', severity: 'critical' });
-        }
-        if (newTelemetry.fireTemp > 600) {
-          console.warn('CRITICAL: Fire temperature exceeded 600C');
-          validationAlerts.push({ id: `alert-${Date.now()}-fire`, title: 'FIRE HAZARD', description: 'Fire temperature exceeded 600C.', time: 'Just Now', severity: 'critical' });
-        }
-        if (newTelemetry.attendance > 50000) {
-          console.warn('CRITICAL: Attendance exceeded 50,000');
-          validationAlerts.push({ id: `alert-${Date.now()}-attendance`, title: 'CAPACITY ALERT', description: 'Venue attendance exceeded 50,000.', time: 'Just Now', severity: 'critical' });
-        }
-
-        if (validationAlerts.length > 0) {
-          return {
-            ...newTelemetry,
-            activeAlerts: [...validationAlerts, ...newTelemetry.activeAlerts.slice(0, 4)]
-          };
-        }
-
-        return newTelemetry;
       });
     }, 2500);
     return () => clearInterval(interval);
