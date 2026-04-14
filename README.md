@@ -1,6 +1,7 @@
 # CrowdFlow AI: Intelligent Venue Command Center
 
-![CrowdFlow Dashboard](docs/dashboard_preview.png)
+![CrowdFlow Dashboard](docs/dashboard_real.png)
+![CrowdFlow Heatmaps](docs/heatmap_real.png)
 
 > **CrowdFlow** is an AI-powered venue command center that combines real-time crowd telemetry, emergency decision support, smart staff coordination, and congestion-aware response workflows for safer large-scale events.
 
