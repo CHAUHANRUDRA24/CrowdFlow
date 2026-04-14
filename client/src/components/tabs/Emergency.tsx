@@ -433,7 +433,7 @@ const Emergency = React.memo(function Emergency({
               <img 
                 className="w-full h-full object-cover opacity-40 mix-blend-screen" 
                 alt="Stadium Map" 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI8DbE5nn6tWC7JDI1A1z3dYFm3Wd8KJVDXr_R_TIeR-gDR07q0lAdexTL-jzpX-f6Q1fzJT4Q0OGcu7rhm6dZQ2scDosjazPwAB5YdOHQX5xNsvASeB2jE4N1Mtz3IQdY8WvAp6TwidCvyqvQd5UDv1e8e9xi7Y7ec-Dx3gxPQ9HyEwqdvmrGuH85WbtYlmuZ8wGOzmBOTltzX2RMrcOiRocwqRQW9wIDMEtooG_6gzfwBptk4yBPEP72QODtb8_sLrU17JQxLQeg"
+                src="/stadium_map.png"
                 referrerPolicy="no-referrer"
               />
               {/* Tactical Overlays */}

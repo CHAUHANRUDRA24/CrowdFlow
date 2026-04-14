@@ -33,4 +33,5 @@ export interface TelemetryData {
   unitsDeployed: number;
   velocity: number;
   activeAlerts: { id: string; title: string; description: string; time: string; severity: 'critical' | 'warning' | 'info' }[];
+  lastUpdated?: any;
 }

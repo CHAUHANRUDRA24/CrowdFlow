@@ -96,7 +96,7 @@ const Staffing = React.memo(function Staffing({
           <div className="bg-surface-container-low rounded-3xl overflow-hidden relative w-full h-[400px] shadow-[0px_20px_40px_rgba(0,219,233,0.06)] border border-outline-variant/10">
             <div className="absolute inset-0 z-0">
               <img
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuC96nJKRjm7NQQDo4IE0Kv9eIyzQWfbnV1lqq1252jBJdJS8JZF9P9QZpvxYSli-av1TeVcgmtFJ5riTTv_sbtZ5oZd3Mr_uXx8InWm_IDgh8STRNT28mEpxNm9p3Twk-gjrT11TjP0UGSMTMEg4iHW7ugNio2_zLd-azVUpgXXc1CUgza0nLOe9p1ZFCovdrWENe6C7n1l65U4acZY5lyPzz3QC_PfOh3YM10L9jLMXzpHlCg_qgHb4VLkrzPO3UG3OcciUBjdwqkr"
+                src="/stadium_map.png"
                 alt="Stadium Blueprint"
                 className="w-full h-full object-cover opacity-40 grayscale mix-blend-screen"
                 referrerPolicy="no-referrer"

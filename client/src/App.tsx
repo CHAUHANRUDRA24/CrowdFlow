@@ -116,13 +116,31 @@ export default function App() {
   if (!isAuthReady) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary-container border-t-transparent rounded-full animate-spin"></div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary-container border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest animate-pulse">
+            Connecting to Neural Core...
+          </p>
+        </div>
       </div>
     );
   }
-
+  
   if (!user) {
     return <Login onLoginSuccess={() => {}} />;
+  }
+
+  if (!telemetry) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary-container border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest animate-pulse">
+            Syncing Neural Channels...
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
