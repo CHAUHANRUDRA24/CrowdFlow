@@ -7,7 +7,7 @@ const firebaseConfig = {
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "crowdflowai.firebaseapp.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "crowdflowai",
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "crowdflowai.firebasestorage.app",
-  messagingSenderID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "954114689593",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "954114689593",
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:954114689593:web:e363e715a6d42f458ddbe8",
 };
 
