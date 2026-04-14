@@ -16,6 +16,9 @@ async function startServer() {
   // Security Middleware
   app.use(helmet({
     contentSecurityPolicy: false, // Disabled for local dev/Vite compatibility
+    crossOriginOpenerPolicy: false, // Disabled to allow Firebase Auth Popups
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: false,
   }));
 
   const apiLimiter = rateLimit({
