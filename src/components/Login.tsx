@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { signInWithRedirect } from 'firebase/auth';
+import React, { useState, useEffect } from 'react';
+import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import { Shield, Lock, AlertTriangle, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -12,12 +12,29 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    const checkRedirect = async () => {
+      setIsLoading(true);
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log("Redirect success", result);
+        }
+      } catch (err: any) {
+        console.error("Redirect error:", err);
+        setError(err.message || "Failed to authenticate. Have you added this domain to Firebase Authorized Domains?");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkRedirect();
+  }, []);
+
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError(null);
     try {
       await signInWithRedirect(auth, googleProvider);
-      // Removed onLoginSuccess() here as it will trigger via App.tsx's onAuthStateChanged after redirect
     } catch (err: any) {
       console.error("Login error:", err);
       setError(err.message || "Failed to authenticate. Please try again.");
