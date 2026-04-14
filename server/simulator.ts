@@ -1,6 +1,6 @@
 import { cert, initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-import { TelemetryData, Responder } from "../src/types.js";
+import { TelemetryData, Responder } from "../client/src/types.js";
 
 /**
  * CrowdFlow Venue Simulator
