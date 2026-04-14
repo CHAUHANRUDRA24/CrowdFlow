@@ -231,8 +231,8 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // Since server.ts is in /server, dist is one level up
-    const distPath = path.join(process.cwd(), "dist");
+    // The built react application is inside the client/dist folder
+    const distPath = path.join(process.cwd(), "client", "dist");
     app.use(express.static(distPath));
     app.get("*", (_req, res) => {
       res.set(
