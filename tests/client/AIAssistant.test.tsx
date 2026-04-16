@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import AIAssistant from "../../src/components/AIAssistant";
-import { TelemetryData } from "../../src/types";
+import AIAssistant from "../../client/src/components/AIAssistant";
+import { TelemetryData } from "../../client/src/types";
 
 const mockTelemetry: TelemetryData = {
   attendance: 45000,
